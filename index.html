@@ -119,6 +119,17 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .warnbox{background:#FFF4E5;border:1px solid #f5c38a;color:#8a4b00;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
 .how{margin-top:8px}.how summary{cursor:pointer;color:var(--mute);font-size:13.5px}
 .chip.gray{background:#eef1f6;color:var(--mute)}
+.tabs.plat{margin-top:14px}.tabs.plat button{font-size:15px;padding:8px 16px}
+.tabs.subt{margin-top:8px;padding:6px;background:#e9edf5;border-radius:24px;display:inline-flex;max-width:100%}
+.tabs.subt button{border:none;background:transparent;font-size:13.5px;padding:6px 12px}
+.tabs.subt button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ghead{margin-top:16px}.ghead h2{margin:0}
+.pgbox{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px}.pgbox summary{cursor:pointer;font-weight:700}
+.pglist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;margin-top:10px}
+.pgi{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 10px;border-radius:10px;background:#f6f8fb;font-size:14px}
+.pgi.red{background:#fdecec}.pgi.yellow{background:#fff8e1}.pgi.green{background:#eaf7ef}
+.pgrp a{font-weight:600;margin-left:6px;color:#1877F2}
+.stats b.bad{color:var(--red)}
 </style>
 </head>
 <body>
@@ -170,7 +181,7 @@ async function boot(){
 // กลับมาหน้านี้ (เช่น หลังไปสร้างลิงก์ในไฟล์เพจ) ให้ดึงข้อมูลใหม่เอง
 let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(VIEW==='share')loadShare();if(VIEW==='perf')loadPerf();}
+  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf();}
 });
 async function load(){
   LAST_LOAD=Date.now();
@@ -196,6 +207,7 @@ async function load(){
   if(res.state==='blocked'){
     screen('🔒','บัญชีนี้ถูกปิดการเข้าใช้งาน','หากคิดว่าผิดพลาด กรุณาติดต่อหัวหน้า');return;
   }
+  if(!DATA&&res.pages&&!res.pages.length&&!res.seeAll){SUB='fbA';loadShare();}
   DATA=res; render();
 }
 
@@ -295,7 +307,7 @@ async function loadUsers(){
   if(USERS_BUSY) return; USERS_BUSY=true;
   try{const res=await api({action:'users'}); USERS=res.ok?res:{error:res.error};}
   catch(e){USERS={error:'เชื่อมต่อไม่ได้'}}
-  USERS_BUSY=false; if(VIEW==='users') render();
+  USERS_BUSY=false; if(PLAT==='users') render();
 }
 function usersView(){
   if(!USERS) return `<h2>👤 ผู้ใช้งาน</h2><div class="empty">⏳ กำลังโหลดรายชื่อ…</div>`;
@@ -321,9 +333,10 @@ function userCard(u,i){
     </div>
     <div class="meta" style="margin-top:6px">เพจที่ดูแล</div>
     <div class="upages"><label class="pchk"><input type="checkbox" data-all ${all?'checked':''} onchange="toggleAll(${i},this.checked)"> ทั้งหมด</label>
-      <div class="pgrp">🎬 เพจคลิป Reel</div>
+      <div class="pgrp">📘 FB Affiliate Group B (${USERS.pageNames.length} เพจ) <a href="#" onclick="event.preventDefault();pickGroup(${i},'B')">เลือกทั้งกลุ่ม</a></div>
       ${USERS.pageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join('')}
-      ${(USERS.sharePageNames||[]).length?`<div class="pgrp">🛒 เพจแชร์ลิงก์ (ป้ายยา)</div>`+USERS.sharePageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join(''):''}</div>
+      ${(USERS.videoNames||[]).length?`<div class="pgrp">🛍️ Shopee Video (${USERS.videoNames.length} ช่อง)</div>`+USERS.videoNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n.replace(/\s*\(.*\)/,''))}</label>`).join(''):''}
+      ${(USERS.sharePageNames||[]).length?`<div class="pgrp">📘 FB Affiliate Group A (${USERS.sharePageNames.length} เพจ) <a href="#" onclick="event.preventDefault();pickGroup(${i},'A')">เลือกทั้งกลุ่ม</a></div>`+USERS.sharePageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join(''):''}</div>
     <div class="acts" style="margin-top:10px">
       ${u.self?'':(u.status==='อนุมัติ'?`<button class="btn small" onclick="saveUser(${i},'ปิด')">🔒 ปิดสิทธิ์</button>`:`<button class="btn sub" onclick="saveUser(${i},'อนุมัติ')">✅ อนุมัติ</button>`)}
       <button class="btn open" onclick="saveUser(${i})">💾 บันทึก</button>
@@ -331,6 +344,7 @@ function userCard(u,i){
   </div>`;
 }
 function shortDate(v){const d=new Date(v);return isNaN(d)?v:d.toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+function pickGroup(i,g){const names=g==='A'?USERS.sharePageNames:USERS.pageNames;document.querySelectorAll(`#u${i} [data-p]`).forEach(c=>{if(names.indexOf(c.dataset.p)>=0&&!c.disabled)c.checked=true})}
 function toggleAll(i,on){document.querySelectorAll(`#u${i} [data-p]`).forEach(c=>{c.disabled=on;if(on)c.checked=true})}
 async function saveUser(i,status){
   const u=USERS.users[i], el=document.getElementById('u'+i);
@@ -349,36 +363,110 @@ async function saveUser(i,status){
   }catch(e){toast('เชื่อมต่อไม่ได้')}
 }
 
-function render(){
-  const d=DATA,k=d.kpi,me=d.me;
-  const pct=k.targetToday?Math.min(100,Math.round(k.doneToday/k.targetToday*100)):0;
-  const tabs=[['home','🏠 ภาพรวม'],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
-  tabs.push(['share',`🛒 แชร์ลิงก์${SHARE&&SHARE.kpi?` (${SHARE.kpi.pending+SHARE.kpi.overdue})`:''}`]);
-  tabs.push(['perf','📈 ผลงาน']);
-  const isAdmin=me.role==='แอดมิน';
-  if(isAdmin) tabs.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
-  let body='';
-  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else if(VIEW==='share') body=shareView(); else if(VIEW==='perf') body=perfView(); else body=probsView(d);
-  $app.innerHTML=`
-  <header><div class="wrap">
-    <img src="${esc(me.picture)}" alt="">
-    <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · ${d.seeAll?'ดูทุกเพจ':'เพจที่ดูแล '+k.totalPages+' เพจ'} · อัปเดต ${esc(d.updated)}</div></div>
-    <div class="sp"></div>
-    <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
-    <button class="btn ghost" onclick="load()">↻</button>
-  </div></header>
-  <div class="wrap">
-    <div class="kpis">
-      <div class="kpi"><div class="l">✅ ลงแล้ววันนี้</div><div class="v">${k.doneToday}</div><div class="s">เป้า ${k.targetToday} คลิป</div><div class="bar"><i style="width:${pct}%"></i></div></div>
+/* ===== โครงเมนู: แพลตฟอร์ม → กลุ่ม → เพจ/ช่อง ===== */
+const NAVS={
+  meta:{label:'Meta',icon:'📘',subs:[['official','FB Page Official'],['fbA','FB Affiliate Group A'],['fbB','FB Affiliate Group B']]},
+  shopee:{label:'Shopee',icon:'🛍️',subs:[['live','Live'],['video','Video']]},
+  tiktok:{label:'TikTok',icon:'🎵',subs:[['live','Live'],['video','Video']]},
+  line:{label:'LINE',icon:'💬',subs:[['oa','LINE OA']]}
+};
+let PLAT='meta', SUB='fbB', INNER='home', VIDEO=null, VIDEO_BUSY=false;
+function go(plat,sub){
+  if(plat==='perf'||plat==='users'){PLAT=plat;}else{PLAT=plat;SUB=sub||NAVS[plat].subs[0][0];}
+  if(PLAT==='users')loadUsers(); if(PLAT==='perf'&&!PERF)loadPerf();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo();
+  render();scrollTo(0,0);
+}
+async function loadVideo(){
+  if(VIDEO_BUSY) return; VIDEO_BUSY=true;
+  try{const res=await api({action:'video'}); VIDEO=res.ok?res:{error:res.error};}catch(e){VIDEO={error:'เชื่อมต่อไม่ได้'}}
+  VIDEO_BUSY=false; if(DATA) render();
+}
+function reelKpis(d){
+  const k=d.kpi, p=k.targetToday?Math.min(100,Math.round(k.doneToday/k.targetToday*100)):0;
+  return `<div class="kpis">
+      <div class="kpi"><div class="l">✅ ลงแล้ววันนี้</div><div class="v">${k.doneToday}</div><div class="s">เป้า ${k.targetToday} คลิป</div><div class="bar"><i style="width:${p}%"></i></div></div>
       <div class="kpi"><div class="l">🎬 ต้องลงวันนี้</div><div class="v">${k.due}</div><div class="s">รอล่วงหน้า ${k.upcoming}</div></div>
       <div class="kpi ${k.overdue?'alert':''}"><div class="l">⏰ เลยกำหนด</div><div class="v">${k.overdue}</div><div class="s">${k.overdue?'ต้องลงด่วน!':'ไม่มีงานลืมลง 👍'}</div></div>
       <div class="kpi ${k.urgent?'alert':''}"><div class="l">⚠️ งานมีปัญหา</div><div class="v">${k.issues}</div><div class="s">ด่วน ${k.urgent}</div></div>
       <div class="kpi"><div class="l">🎯 Reels เดือนนี้</div><div class="v">${k.reels}</div><div class="s">${k.reelsNext?esc(k.reelsNext)+' (อีก '+esc(k.reelsNeed)+')':'คลิปของเพจที่ดูแล'}</div></div>
       <div class="kpi ${k.redPages?'alert':''}"><div class="l">🚦 เพจต้องรีบ</div><div class="v">${k.redPages}</div><div class="s">จาก ${k.totalPages} เพจ</div></div>
-    </div>
-    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();if(VIEW==='share')loadShare();if(VIEW==='perf')loadPerf();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
+    </div>`;
+}
+function groupB(d){
+  const inner=[['home',`📋 รายเพจ (${d.pages.length})`],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
+  const body=INNER==='tasks'?tasksView(d):INNER==='probs'?probsView(d):homeView(d);
+  return `<div class="ghead"><h2>FB Affiliate Group B <span class="count">${d.pages.length} เพจ</span></h2><div class="meta">เพจคลิป Reel · ลงวันละ 3 คลิป/เพจ พร้อมปักตะกร้า</div></div>
+    ${reelKpis(d)}
+    <div class="tabs sm">${inner.map(t=>`<button class="${INNER===t[0]?'on':''}" onclick="INNER='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
+    ${body}`;
+}
+function groupA(){
+  let grid='';
+  if(SHARE&&SHARE.pageStatus){
+    const lab={done:['green','✅ โพสต์แล้ว'],pending:['yellow','📝 รอโพสต์'],overdue:['red','⏰ ค้าง'],none:['gray','— ไม่มีงานวันนี้']};
+    const ord={overdue:0,pending:1,done:2,none:3};
+    const ps=[...SHARE.pageStatus].sort((a,b)=>ord[a.status]-ord[b.status]||a.name.localeCompare(b.name,'th'));
+    grid=`<details class="pgbox" ${SHARE.kpi&&SHARE.kpi.today?'':'open'}><summary>📋 รายชื่อ ${ps.length} เพจ และสถานะวันนี้</summary><div class="pglist">${ps.map(x=>`<div class="pgi ${lab[x.status][0]}">${pageLink(x.name,x.fb)}<span class="chip ${lab[x.status][0]}">${lab[x.status][1]}</span></div>`).join('')}</div></details>`;
+  }
+  return `<div class="ghead"><h2>FB Affiliate Group A</h2><div class="meta">เพจแชร์ลิงก์ (ป้ายยา) · 1 โพสต์/เพจ/วัน · แปะลิงก์ในคอมเมนต์</div></div>`+shareView().replace(/^<h2>[\s\S]*?<\/h2>/,'')+grid;
+}
+function videoView(){
+  const head=`<div class="ghead"><h2>Shopee Video</h2><div class="meta">ช่องวิดีโอ Shopee · เป้าวันละ 5 คลิป/ช่อง (จ.–ศ.)</div></div>`;
+  if(!VIDEO) return head+`<div class="empty">⏳ กำลังโหลดช่องวิดีโอ…</div>`;
+  if(VIDEO.error) return head+`<div class="empty">โหลดไม่ได้: ${esc(VIDEO.error)} <button class="btn small" onclick="VIDEO=null;loadVideo();render()">ลองใหม่</button></div>`;
+  const k=VIDEO.kpi, p=k.target?Math.min(100,Math.round(k.today/k.target*100)):0;
+  const ch=[...VIDEO.channels].sort((a,b)=>(a.today/(a.target||1))-(b.today/(b.target||1))||b.backlog-a.backlog);
+  return head+`<div class="kpis share">
+    <div class="kpi"><div class="l">🎬 คลิปวันนี้</div><div class="v">${k.today}</div><div class="s">เป้า ${k.target}</div><div class="bar"><i style="width:${p}%"></i></div></div>
+    <div class="kpi"><div class="l">📅 สัปดาห์นี้</div><div class="v">${k.week}</div><div class="s">เป้า ${k.weekTarget}</div></div>
+    <div class="kpi ${k.backlog?'alert':''}"><div class="l">📦 งานค้าง</div><div class="v">${k.backlog}</div><div class="s">คลิปจากวันก่อน</div></div>
+    <div class="kpi"><div class="l">✅ ช่องครบวันนี้</div><div class="v">${k.done}</div><div class="s">จาก ${k.channels} ช่อง</div></div>
+  </div>
+  <h2>📋 รายชื่อช่อง <span class="count">${ch.length}</span></h2>
+  <div class="pages">${ch.map(c=>{const t=c.target&&c.today>=c.target?'green':c.backlog>=50?'red':'yellow';return `<div class="pg ${t}">
+    <div class="top"><div class="name"><b class="pgn">${esc(c.short)}</b></div><span class="chip ${t}">${c.today}/${c.target} วันนี้</span></div>
+    <div class="meta">ผู้ดูแล <b>${esc(c.owner||'—')}</b> · ${esc(c.category)} · ${esc(c.level)}${c.status?' · '+esc(c.status):''}</div>
+    <div class="stats"><span>สัปดาห์ <b>${c.week}/${c.weekTarget}</b></span><span>ค้าง <b class="${c.backlog>=50?'bad':''}">${c.backlog}</b></span></div>
+    ${c.url?`<div><button class="btn open" onclick="openUrl('${esc(c.url)}')">📂 เปิดไฟล์ช่อง</button></div>`:''}
+  </div>`}).join('')}</div>`;
+}
+function liveView(){
+  const chs=['KCM','NAGACARE','Tinncare','Warawut'];
+  return `<div class="ghead"><h2>Shopee Live</h2><div class="meta">ช่องไลฟ์ Shopee · ลงกะ/แลกกะ ทำในตารางไลฟ์</div></div>
+  <div class="empty" style="text-align:left">📅 ตารางกะไลฟ์ และคนไลฟ์แต่ละกะ อยู่ในระบบตารางไลฟ์<br><button class="btn open" style="margin-top:8px" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 เปิดตารางไลฟ์</button><div class="meta" style="margin-top:8px">คะแนนกะไลฟ์ในหน้านี้ จะขึ้นหลังเชื่อมข้อมูลตารางไลฟ์</div></div>
+  <h2>📋 รายชื่อช่อง <span class="count">${chs.length}</span></h2>
+  <div class="pages">${chs.map(c=>`<div class="pg gray"><div class="top"><div class="name"><b class="pgn">${c}</b></div><span class="chip gray">ช่องไลฟ์</span></div></div>`).join('')}</div>`;
+}
+function soon(title,desc){return `<div class="ghead"><h2>${title}</h2></div><div class="empty">🚧 ${desc}<br><small>ยังไม่ได้เชื่อมข้อมูล · บอกได้ว่าจะให้ดึงจากไฟล์ไหน</small></div>`}
+
+function render(){
+  const d=DATA,me=d.me,isAdmin=me.role==='แอดมิน';
+  if(PLAT==='users'&&!isAdmin) PLAT='meta';
+  let body='';
+  if(PLAT==='perf') body=perfView();
+  else if(PLAT==='users') body=usersView();
+  else if(PLAT==='meta') body=SUB==='fbA'?groupA():SUB==='fbB'?groupB(d):soon('FB Page Official','เพจทางการของแบรนด์/บริษัท');
+  else if(PLAT==='shopee') body=SUB==='video'?videoView():liveView();
+  else if(PLAT==='tiktok') body=soon('TikTok '+(SUB==='live'?'Live':'Video'),SUB==='live'?'ไลฟ์ TikTok ให้แบรนด์':'คลิปปักตะกร้า TikTok Affiliate');
+  else body=soon('LINE OA','งาน LINE OA / บรอดแคสต์');
+  const plats=Object.keys(NAVS).map(k=>[k,NAVS[k].icon+' '+NAVS[k].label]);
+  plats.push(['perf','📈 ผลงาน']);
+  if(isAdmin) plats.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
+  const subs=NAVS[PLAT]?NAVS[PLAT].subs:null;
+  $app.innerHTML=`
+  <header><div class="wrap">
+    <img src="${esc(me.picture)}" alt="">
+    <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · อัปเดต ${esc(d.updated)}</div></div>
+    <div class="sp"></div>
+    <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
+    <button class="btn ghost" onclick="load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf()">↻</button>
+  </div></header>
+  <div class="wrap">
+    <div class="tabs plat">${plats.map(t=>`<button class="${PLAT===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>
+    ${subs?`<div class="tabs subt">${subs.map(t=>`<button class="${SUB===t[0]?'on':''}" onclick="go('${PLAT}','${t[0]}')">${t[1]}</button>`).join('')}</div>`:''}
     ${body}
-    <div class="foot">ข้อมูลอัปเดตจากไฟล์ของแต่ละเพจ · บันทึกงานที่ไฟล์เพจ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
+    <div class="foot">ข้อมูลอัปเดตจากไฟล์งานแต่ละเพจ/ช่อง · บันทึกงานที่ไฟล์ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
   </div>`;
 }
 
