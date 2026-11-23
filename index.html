@@ -130,6 +130,9 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .pgi.red{background:#fdecec}.pgi.yellow{background:#fff8e1}.pgi.green{background:#eaf7ef}
 .pgrp a{font-weight:600;margin-left:6px;color:#1877F2}
 .stats b.bad{color:var(--red)}
+.plogo{width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:7px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f6;font-size:12px;border:1px solid #e3e7ef}
+.pg .name .plogo{width:30px;height:30px}
+a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration-color:#1877F2}
 </style>
 </head>
 <body>
@@ -150,8 +153,13 @@ let DATA = null, VIEW = 'home';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1600)}
 function tone(s){s=s||'';if(s.startsWith('🔴'))return'red';if(s.startsWith('🟠'))return'orange';if(s.startsWith('🟡'))return'yellow';if(s.startsWith('🟢'))return'green';return'gray'}
+let LOGOS={};
+try{const c=JSON.parse(localStorage.getItem('pd_logos')||'null');if(c&&Date.now()-c.t<6*3600e3)LOGOS=c.l||{};}catch(e){}
+async function loadLogos(){try{const r=await api({action:'logos'});if(r.ok){LOGOS=r.logos||{};try{localStorage.setItem('pd_logos',JSON.stringify({t:Date.now(),l:LOGOS}))}catch(e){}if(DATA)render();}}catch(e){}}
+function fbId(fb){const m=String(fb||'').match(/id=(\d+)/);return m?m[1]:''}
+function logoImg(fb){const l=LOGOS[fbId(fb)];return l?`<img class="plogo" src="${l}" alt="">`:`<span class="plogo none">📄</span>`}
 function pageLink(name,fb){
-  return fb?`<a class="pgn" href="#" onclick="event.preventDefault();openUrl('${esc(fb)}')">${esc(name)} <span class="fb">↗</span></a>`:`<b class="pgn">${esc(name)}</b>`;
+  return fb?`<a class="pgn" href="#" onclick="event.preventDefault();openUrl('${esc(fb)}')">${logoImg(fb)}${esc(name)} <span class="fb">↗</span></a>`:`<b class="pgn">${esc(name)}</b>`;
 }
 function openUrl(u){if(!u)return;if(window.liff&&liff.isInClient&&liff.isInClient()){liff.openWindow({url:u,external:true})}else{window.open(u,'_blank')}}
 async function copy(t,label){
@@ -208,6 +216,7 @@ async function load(){
     screen('🔒','บัญชีนี้ถูกปิดการเข้าใช้งาน','หากคิดว่าผิดพลาด กรุณาติดต่อหัวหน้า');return;
   }
   if(!DATA&&res.pages&&!res.pages.length&&!res.seeAll){SUB='fbA';loadShare();}
+  if(!DATA&&!Object.keys(LOGOS).length) setTimeout(loadLogos,300);
   DATA=res; render();
 }
 

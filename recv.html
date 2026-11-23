@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>logo</title></head><body style="font-family:sans-serif">
+<div id="s">...</div>
+<script>
+(async()=>{
+  const h=new URLSearchParams(location.hash.slice(1));
+  const id=h.get('id'), d=h.get('d'), k=h.get('k');
+  const s=document.getElementById('s');
+  if(!id||!d||!k){s.textContent='NO DATA';document.title='LOGO-NODATA';return}
+  try{
+    const r=await fetch('https://script.google.com/macros/s/AKfycbwh19gGjyTtxY2oSor5P4QmRuNjq4wqitQlxZaXwkBzk8799-x_bSKy_jDQrgByu6g7UA/exec',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'saveLogo',secret:k,id:id,data:d})});
+    const j=await r.json();
+    s.textContent=j.ok?'OK '+id:'ERR '+j.error; document.title=j.ok?'LOGO-OK':'LOGO-ERR';
+  }catch(e){s.textContent='ERR '+e.message;document.title='LOGO-ERR'}
+  history.replaceState(null,'',location.pathname);
+})();
+</script></body></html>
