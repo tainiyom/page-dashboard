@@ -211,7 +211,7 @@ function userCard(u,i){
   const tone=u.status==='รออนุมัติ'?'orange':u.status==='ปิด'?'red':'green';
   return `<div class="ucard ${u.status==='รออนุมัติ'?'pend':''}" id="u${i}">
     <div class="uh">${u.picture?`<img src="${esc(u.picture)}" alt="">`:'<div class="noimg">👤</div>'}
-      <div style="flex:1"><b>${esc(u.lineName)}</b>${u.self?' <span class="chip">คุณ</span>':''}<div class="meta">เข้าล่าสุด ${esc(u.last)} · ครั้งแรก ${esc(u.first)}</div></div>
+      <div style="flex:1"><b>${esc(u.lineName)}</b>${u.self?' <span class="chip">คุณ</span>':''}<div class="meta">เข้าล่าสุด ${esc(shortDate(u.last))} · ครั้งแรก ${esc(shortDate(u.first))}</div></div>
       <span class="chip ${tone}">${esc(u.status)}</span></div>
     <div class="uf">
       <label>ชื่อเล่น<input data-k="nick" value="${esc(u.nick)}" placeholder="เช่น น้องมิ้น"></label>
@@ -226,6 +226,7 @@ function userCard(u,i){
     </div>
   </div>`;
 }
+function shortDate(v){const d=new Date(v);return isNaN(d)?v:d.toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function toggleAll(i,on){document.querySelectorAll(`#u${i} [data-p]`).forEach(c=>{c.disabled=on;if(on)c.checked=true})}
 async function saveUser(i,status){
   const u=USERS.users[i], el=document.getElementById('u'+i);
