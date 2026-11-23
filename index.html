@@ -87,6 +87,8 @@
   .tabs button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 14px;font:inherit;font-size:14px;font-weight:600;color:var(--mute);white-space:nowrap;cursor:pointer}
   .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
   .foot{text-align:center;color:var(--mute);font-size:12px;margin-top:28px}
+.btn.sub{background:#06C755;color:#fff;border:none;font-weight:700;font-size:13px;padding:6px 12px}
+.sublink{margin-top:8px;padding:8px 10px;border-radius:10px;background:#E8F8EE;color:#0b6b33;font-size:13px;word-break:break-all;cursor:pointer}
 </style>
 </head>
 <body>
@@ -132,7 +134,13 @@ async function boot(){
   }
 }
 
+// กลับมาหน้านี้ (เช่น หลังไปสร้างลิงก์ในไฟล์เพจ) ให้ดึงข้อมูลใหม่เอง
+let LAST_LOAD=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000) load();
+});
 async function load(){
+  LAST_LOAD=Date.now();
   const token=liff.getIDToken();
   if(!token){liff.login({redirectUri:location.href});return}
   if(!DATA) screen('⏳','กำลังโหลดข้อมูล…','ดึงสถานะงานล่าสุดจากทุกเพจ');
@@ -225,9 +233,10 @@ function tasksView(d){
         ${t.clip&&t.clip.startsWith('http')?`<button class="btn small" onclick="openUrl('${esc(t.clip)}')">🎞️ คลิป</button>`:'<span class="chip red">ยังไม่มีไฟล์คลิป</span>'}
         ${t.cover&&t.cover.startsWith('http')?`<button class="btn small" onclick="openUrl('${esc(t.cover)}')">🖼️ ปก</button>`:''}
         ${t.caption?`<button class="btn small" onclick="copy(DATA.tasks[${d.tasks.indexOf(t)}].caption,'แคปชัน')">📋 คัดลอกแคปชัน</button>`:''}
-        ${t.subLink?`<button class="btn small" onclick="copy(DATA.tasks[${d.tasks.indexOf(t)}].subLink,'ลิงก์')">🔗 คัดลอกลิงก์</button>`:''}
+        ${t.subLink?`<button class="btn sub" onclick="copy(DATA.tasks[${d.tasks.indexOf(t)}].subLink,'ลิงก์ Sub ID')">🔗 คัดลอกลิงก์ Sub ID</button>`:(t.product?`<span class="chip orange">⏳ ยังไม่มีลิงก์ Sub ID</span>`:'')}
         <button class="btn open" onclick="openUrl('${esc(t.url)}')">📂 บันทึกในไฟล์เพจ</button>
       </div>
+      ${t.subLink?`<div class="sublink" onclick="copy(DATA.tasks[${d.tasks.indexOf(t)}].subLink,'ลิงก์ Sub ID')">🔗 ${esc(t.subLink)}</div>`:(t.product?`<div class="meta">👉 กด "บันทึกในไฟล์เพจ" สร้างลิงก์ติด Sub ID ในช่อง Q แล้วกลับมาหน้านี้ ปุ่มคัดลอกจะขึ้นเอง</div>`:'')}
       ${t.caption?`<details><summary>ดูแคปชัน / หมายเหตุ</summary><div class="cap">${esc(t.caption)}</div>${t.note?`<div class="meta">📝 ${esc(t.note)}</div>`:''}</details>`:''}
     </div>`).join('')}`;
 }
