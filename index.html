@@ -89,6 +89,10 @@
   .foot{text-align:center;color:var(--mute);font-size:12px;margin-top:28px}
 .btn.sub{background:#06C755;color:#fff;border:none;font-weight:700;font-size:13px;padding:6px 12px}
 .sublink{margin-top:8px;padding:8px 10px;border-radius:10px;background:#E8F8EE;color:#0b6b33;font-size:13px;word-break:break-all;cursor:pointer}
+.pg{font-weight:800;color:#1B2B4B;text-decoration:none}
+a.pg{color:#1877F2;border-bottom:1.5px solid rgba(24,119,242,.35)}
+a.pg .fb{font-size:.8em}
+.meta .pg{font-size:14.5px}
 </style>
 </head>
 <body>
@@ -109,6 +113,9 @@ let DATA = null, VIEW = 'home';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1600)}
 function tone(s){s=s||'';if(s.startsWith('🔴'))return'red';if(s.startsWith('🟠'))return'orange';if(s.startsWith('🟡'))return'yellow';if(s.startsWith('🟢'))return'green';return'gray'}
+function pageLink(name,fb){
+  return fb?`<a class="pg" href="#" onclick="event.preventDefault();openUrl('${esc(fb)}')">${esc(name)} <span class="fb">↗</span></a>`:`<b class="pg">${esc(name)}</b>`;
+}
 function openUrl(u){if(!u)return;if(window.liff&&liff.isInClient&&liff.isInClient()){liff.openWindow({url:u,external:true})}else{window.open(u,'_blank')}}
 async function copy(t,label){
   try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}
@@ -202,7 +209,7 @@ function homeView(d){
   <h2>📋 สถานะรายเพจ <span class="count">${pages.length}</span></h2>
   <div class="pages">${pages.map(p=>`
     <div class="pg ${tone(p.status)}">
-      <div class="top"><div class="name">${esc(p.name)}</div><span class="chip ${tone(p.status)}">${esc(p.status)}</span></div>
+      <div class="top"><div class="name">${pageLink(p.name,p.fb)}</div><span class="chip ${tone(p.status)}">${esc(p.status)}</span></div>
       <div class="todo">👉 ${esc(p.todo)}</div>
       <div class="stats">
         <span>วันนี้ <b>${esc(p.doneTarget)}</b></span><span>7 วัน <b>${esc(p.week)}</b></span>
@@ -228,7 +235,7 @@ function tasksView(d){
   ${list.map((t,i)=>`
     <div class="task ${t.due.startsWith('เลย')?'over':''}">
       <div class="h"><div class="t">${esc(t.title)}</div><span class="chip ${t.due.startsWith('เลย')?'red':'yellow'}">${esc(t.due)}</span></div>
-      <div class="meta">${esc(t.page)} · แถว ${esc(t.no)} · ${esc(t.format)} · สถานะ ${esc(t.status)}${t.product?' · 🛒 '+esc(t.product):''}</div>
+      <div class="meta">${pageLink(t.page,t.fb)} · แถว ${esc(t.no)} · ${esc(t.format)} · สถานะ ${esc(t.status)}${t.product?' · 🛒 '+esc(t.product):''}</div>
       <div class="acts">
         ${t.clip&&t.clip.startsWith('http')?`<button class="btn small" onclick="openUrl('${esc(t.clip)}')">🎞️ คลิป</button>`:'<span class="chip red">ยังไม่มีไฟล์คลิป</span>'}
         ${t.cover&&t.cover.startsWith('http')?`<button class="btn small" onclick="openUrl('${esc(t.cover)}')">🖼️ ปก</button>`:''}
@@ -247,7 +254,7 @@ function probsView(d){
   ${d.problems.map(p=>`
     <div class="prob">
       <span class="chip ${p.level.startsWith('🔴')?'red':'orange'}">${esc(p.level)}</span>
-      <div class="i"><b>${esc(p.title)}</b><br>${esc(p.page)} · แถว ${esc(p.no)} · ${esc(p.status)}<br><span class="w">${esc(p.issue)}</span></div>
+      <div class="i"><b>${esc(p.title)}</b><br>${pageLink(p.page,p.fb)} · แถว ${esc(p.no)} · ${esc(p.status)}<br><span class="w">${esc(p.issue)}</span></div>
       <button class="btn open" onclick="openUrl('${esc(p.url)}')">📂 แก้</button>
     </div>`).join('')}`;
 }
