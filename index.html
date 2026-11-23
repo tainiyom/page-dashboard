@@ -103,6 +103,10 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .uf input,.uf select{font:inherit;font-size:14.5px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;color:var(--ink);background:#fff}
 .upages{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .pchk{font-size:13.5px;background:#f3f5f9;border-radius:16px;padding:4px 10px;display:flex;align-items:center;gap:5px}
+.pgrp{width:100%;font-size:12.5px;color:var(--mute);margin-top:6px;font-weight:700}
+.donebox{margin-top:12px}.donebox summary{cursor:pointer;font-weight:700;color:var(--green);padding:8px 0}
+.kpis.share{grid-template-columns:repeat(4,1fr)}
+@media(max-width:640px){.kpis.share{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -154,7 +158,7 @@ async function boot(){
 // กลับมาหน้านี้ (เช่น หลังไปสร้างลิงก์ในไฟล์เพจ) ให้ดึงข้อมูลใหม่เอง
 let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000) load();
+  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(VIEW==='share')loadShare();}
 });
 async function load(){
   LAST_LOAD=Date.now();
@@ -181,6 +185,50 @@ async function load(){
     screen('🔒','บัญชีนี้ถูกปิดการเข้าใช้งาน','หากคิดว่าผิดพลาด กรุณาติดต่อหัวหน้า');return;
   }
   DATA=res; render();
+}
+
+/* ===== แชร์ลิงก์เพจป้ายยา ===== */
+let SHARE=null, SHARE_BUSY=false;
+async function loadShare(){
+  if(SHARE_BUSY) return; SHARE_BUSY=true;
+  try{const res=await api({action:'share'}); SHARE=res.ok?res:{error:res.error};}
+  catch(e){SHARE={error:'เชื่อมต่อไม่ได้'}}
+  SHARE_BUSY=false; if(DATA) render();
+}
+function shareView(){
+  if(!SHARE) return `<h2>🛒 แชร์ลิงก์เพจป้ายยา</h2><div class="empty">⏳ กำลังโหลดงานแชร์ลิงก์…</div>`;
+  if(SHARE.error) return `<h2>🛒 แชร์ลิงก์เพจป้ายยา</h2><div class="empty">โหลดไม่ได้: ${esc(SHARE.error)} <button class="btn small" onclick="SHARE=null;loadShare();render()">ลองใหม่</button></div>`;
+  const k=SHARE.kpi, it=SHARE.items, todo=it.filter(x=>!x.posted), done=it.filter(x=>x.posted);
+  const pct=k.today?Math.round(k.posted/k.today*100):0;
+  let head=`<h2>🛒 แชร์ลิงก์เพจป้ายยา <span class="count">${k.pages} เพจ</span></h2>
+  <div class="kpis share">
+    <div class="kpi"><div class="l">✅ โพสต์แล้ววันนี้</div><div class="v">${k.posted}</div><div class="s">จาก ${k.today} งาน</div><div class="bar"><i style="width:${pct}%"></i></div></div>
+    <div class="kpi"><div class="l">📝 รอโพสต์วันนี้</div><div class="v">${k.pending}</div><div class="s">${esc(SHARE.today)}</div></div>
+    <div class="kpi ${k.overdue?'alert':''}"><div class="l">⏰ ค้างจากวันก่อน</div><div class="v">${k.overdue}</div><div class="s">${k.overdue?'โพสต์ก่อนงานวันนี้':'ไม่มีงานค้าง 👍'}</div></div>
+    <div class="kpi ${k.noSub?'alert':''}"><div class="l">🔗 ยังไม่มีลิงก์แชร์</div><div class="v">${k.noSub}</div><div class="s">ภาพยังไม่พร้อม ${k.noImage}</div></div>
+  </div>`;
+  if(!k.today&&!todo.length) return head+`<div class="empty">ยังไม่มีงานแชร์ลิงก์ของวันนี้${SHARE.latest?` (งานล่าสุด ${esc(SHARE.latest.split('-').reverse().join('/'))})`:''} · งานจะขึ้นเมื่อมีการเติมงานในไฟล์</div>`;
+  return head+`
+  ${todo.length?todo.map(shareCard).join(''):'<div class="empty">โพสต์ครบทุกเพจแล้ว 🎉</div>'}
+  ${done.length?`<details class="donebox"><summary>✅ โพสต์แล้ววันนี้ ${done.length} งาน (กดดู)</summary>${done.map(shareCard).join('')}</details>`:''}`;
+}
+function shareCard(t){
+  const i=SHARE.items.indexOf(t);
+  const chip=t.posted?'<span class="chip green">โพสต์แล้ว</span>':t.overdue?`<span class="chip red">ค้าง ${esc(t.date)}</span>`:'<span class="chip yellow">โพสต์วันนี้</span>';
+  return `<div class="task ${t.overdue?'over':''}">
+    <div class="h"><div class="t">${pageLink(t.page,t.fb)}</div>${chip}</div>
+    <div class="meta">🛒 ${esc(t.product)}${t.shop?' · '+esc(t.shop):''} · สถานะ ${esc(t.status)}</div>
+    ${t.posted?(t.postLink?`<div class="acts"><button class="btn small" onclick="openUrl('${esc(t.postLink)}')">👀 ดูโพสต์</button></div>`:''):`
+    <div class="acts">
+      ${/^http/.test(t.image)?`<button class="btn small" onclick="openUrl('${esc(t.image)}')">🖼️ ภาพโพสต์</button>`:`<span class="chip orange">⏳ ภาพยังไม่พร้อม${t.imageStatus?' ('+esc(t.imageStatus)+')':''}</span>`}
+      ${t.caption?`<button class="btn small" onclick="copy(SHARE.items[${i}].caption,'แคปชัน')">📋 คัดลอกแคปชัน</button>`:''}
+      ${/^http/.test(t.subLink)?`<button class="btn sub" onclick="copy(SHARE.items[${i}].subLink,'ลิงก์แชร์')">🔗 คัดลอกลิงก์แชร์</button>`:'<span class="chip orange">⏳ ยังไม่มีลิงก์แชร์</span>'}
+      <button class="btn open" onclick="openUrl('${esc(t.url)}')">📂 บันทึกในไฟล์ (แถว ${t.row})</button>
+    </div>
+    ${/^http/.test(t.subLink)?`<div class="sublink" onclick="copy(SHARE.items[${i}].subLink,'ลิงก์แชร์')">🔗 ${esc(t.subLink)}</div>`:`<div class="meta">👉 สร้างลิงก์แชร์จาก NAGAcare แล้ววางในคอลัมน์ L ของแถว ${t.row}</div>`}
+    <div class="meta">👉 โพสต์เสร็จ: เปลี่ยนสถานะเป็น "โพสต์แล้ว" + วางลิงก์โพสต์ในคอลัมน์ K</div>
+    ${t.caption?`<details><summary>ดูแคปชัน / หมายเหตุ</summary><div class="cap">${esc(t.caption)}</div>${t.note?`<div class="meta">📝 ${esc(t.note)}</div>`:''}</details>`:''}`}
+  </div>`;
 }
 
 /* ===== หลังบ้านแอดมิน ===== */
@@ -219,7 +267,9 @@ function userCard(u,i){
     </div>
     <div class="meta" style="margin-top:6px">เพจที่ดูแล</div>
     <div class="upages"><label class="pchk"><input type="checkbox" data-all ${all?'checked':''} onchange="toggleAll(${i},this.checked)"> ทั้งหมด</label>
-      ${USERS.pageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join('')}</div>
+      <div class="pgrp">🎬 เพจคลิป Reel</div>
+      ${USERS.pageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join('')}
+      ${(USERS.sharePageNames||[]).length?`<div class="pgrp">🛒 เพจแชร์ลิงก์ (ป้ายยา)</div>`+USERS.sharePageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join(''):''}</div>
     <div class="acts" style="margin-top:10px">
       ${u.self?'':(u.status==='อนุมัติ'?`<button class="btn small" onclick="saveUser(${i},'ปิด')">🔒 ปิดสิทธิ์</button>`:`<button class="btn sub" onclick="saveUser(${i},'อนุมัติ')">✅ อนุมัติ</button>`)}
       <button class="btn open" onclick="saveUser(${i})">💾 บันทึก</button>
@@ -249,10 +299,11 @@ function render(){
   const d=DATA,k=d.kpi,me=d.me;
   const pct=k.targetToday?Math.min(100,Math.round(k.doneToday/k.targetToday*100)):0;
   const tabs=[['home','🏠 ภาพรวม'],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
+  tabs.push(['share',`🛒 แชร์ลิงก์${SHARE&&SHARE.kpi?` (${SHARE.kpi.pending+SHARE.kpi.overdue})`:''}`]);
   const isAdmin=me.role==='แอดมิน';
   if(isAdmin) tabs.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
   let body='';
-  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else body=probsView(d);
+  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else if(VIEW==='share') body=shareView(); else body=probsView(d);
   $app.innerHTML=`
   <header><div class="wrap">
     <img src="${esc(me.picture)}" alt="">
@@ -269,7 +320,7 @@ function render(){
       <div class="kpi"><div class="l">🎯 Reels เดือนนี้</div><div class="v">${k.reels}</div><div class="s">${k.reelsNext?esc(k.reelsNext)+' (อีก '+esc(k.reelsNeed)+')':'คลิปของเพจที่ดูแล'}</div></div>
       <div class="kpi ${k.redPages?'alert':''}"><div class="l">🚦 เพจต้องรีบ</div><div class="v">${k.redPages}</div><div class="s">จาก ${k.totalPages} เพจ</div></div>
     </div>
-    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
+    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();if(VIEW==='share')loadShare();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
     ${body}
     <div class="foot">ข้อมูลอัปเดตจากไฟล์ของแต่ละเพจ · บันทึกงานที่ไฟล์เพจ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
   </div>`;
