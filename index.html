@@ -93,6 +93,16 @@
 a.pgn{color:#0F1E3D;text-decoration:underline;text-decoration-color:#1877F2;text-underline-offset:3px}
 a.pgn .fb{font-size:.8em;color:#1877F2}
 .meta .pgn{font-size:14.5px}
+.tabs .dot{background:#E8590C;color:#fff;border-radius:10px;padding:0 7px;font-size:12px;margin-left:4px}
+.ucard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.ucard.pend{border-left:6px solid #f08c00}
+.uh{display:flex;align-items:center;gap:10px}
+.uh img,.noimg{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#eef1f6;display:flex;align-items:center;justify-content:center}
+.uf{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.uf label{font-size:12.5px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
+.uf input,.uf select{font:inherit;font-size:14.5px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;color:var(--ink);background:#fff}
+.upages{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.pchk{font-size:13.5px;background:#f3f5f9;border-radius:16px;padding:4px 10px;display:flex;align-items:center;gap:5px}
 </style>
 </head>
 <body>
@@ -173,12 +183,75 @@ async function load(){
   DATA=res; render();
 }
 
+/* ===== หลังบ้านแอดมิน ===== */
+let USERS=null, USERS_BUSY=false;
+async function api(body){
+  const r=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:liff.getIDToken()},body))});
+  return r.json();
+}
+async function loadUsers(){
+  if(USERS_BUSY) return; USERS_BUSY=true;
+  try{const res=await api({action:'users'}); USERS=res.ok?res:{error:res.error};}
+  catch(e){USERS={error:'เชื่อมต่อไม่ได้'}}
+  USERS_BUSY=false; if(VIEW==='users') render();
+}
+function usersView(){
+  if(!USERS) return `<h2>👤 ผู้ใช้งาน</h2><div class="empty">⏳ กำลังโหลดรายชื่อ…</div>`;
+  if(USERS.error) return `<h2>👤 ผู้ใช้งาน</h2><div class="empty">โหลดไม่ได้: ${esc(USERS.error)} <button class="btn small" onclick="USERS=null;loadUsers();render()">ลองใหม่</button></div>`;
+  const ord={'รออนุมัติ':0,'อนุมัติ':1,'ปิด':2};
+  const list=[...USERS.users].sort((a,b)=>(ord[a.status]??0)-(ord[b.status]??0));
+  const pend=list.filter(u=>u.status==='รออนุมัติ').length;
+  return `<h2>👤 ผู้ใช้งาน <span class="count">${list.length}</span>${pend?` <span class="chip orange">รออนุมัติ ${pend} คน</span>`:''}</h2>
+  <div class="meta" style="margin:-4px 0 10px">พนักงานเปิดลิงก์แล้วล็อกอิน LINE ชื่อจะขึ้นที่นี่ · ใส่ชื่อเล่น เลือกเพจ แล้วกด ✅ อนุมัติ</div>
+  ${list.map((u,i)=>userCard(u,USERS.users.indexOf(u))).join('')}`;
+}
+function userCard(u,i){
+  const mine=u.pages.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
+  const all=/ทั้งหมด/.test(u.pages);
+  const tone=u.status==='รออนุมัติ'?'orange':u.status==='ปิด'?'red':'green';
+  return `<div class="ucard ${u.status==='รออนุมัติ'?'pend':''}" id="u${i}">
+    <div class="uh">${u.picture?`<img src="${esc(u.picture)}" alt="">`:'<div class="noimg">👤</div>'}
+      <div style="flex:1"><b>${esc(u.lineName)}</b>${u.self?' <span class="chip">คุณ</span>':''}<div class="meta">เข้าล่าสุด ${esc(u.last)} · ครั้งแรก ${esc(u.first)}</div></div>
+      <span class="chip ${tone}">${esc(u.status)}</span></div>
+    <div class="uf">
+      <label>ชื่อเล่น<input data-k="nick" value="${esc(u.nick)}" placeholder="เช่น น้องมิ้น"></label>
+      <label>บทบาท<select data-k="role" ${u.self?'disabled':''}>${['พนักงาน','หัวหน้า','แอดมิน'].map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></label>
+    </div>
+    <div class="meta" style="margin-top:6px">เพจที่ดูแล</div>
+    <div class="upages"><label class="pchk"><input type="checkbox" data-all ${all?'checked':''} onchange="toggleAll(${i},this.checked)"> ทั้งหมด</label>
+      ${USERS.pageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join('')}</div>
+    <div class="acts" style="margin-top:10px">
+      ${u.self?'':(u.status==='อนุมัติ'?`<button class="btn small" onclick="saveUser(${i},'ปิด')">🔒 ปิดสิทธิ์</button>`:`<button class="btn sub" onclick="saveUser(${i},'อนุมัติ')">✅ อนุมัติ</button>`)}
+      <button class="btn open" onclick="saveUser(${i})">💾 บันทึก</button>
+    </div>
+  </div>`;
+}
+function toggleAll(i,on){document.querySelectorAll(`#u${i} [data-p]`).forEach(c=>{c.disabled=on;if(on)c.checked=true})}
+async function saveUser(i,status){
+  const u=USERS.users[i], el=document.getElementById('u'+i);
+  const all=el.querySelector('[data-all]').checked;
+  const pages=all?'ทั้งหมด':[...el.querySelectorAll('[data-p]:checked')].map(c=>c.dataset.p).join(', ');
+  const role=el.querySelector('[data-k=role]').value;
+  const nick=el.querySelector('[data-k=nick]').value.trim();
+  const st=status||u.status;
+  if(st==='อนุมัติ'&&role==='พนักงาน'&&!pages){toast('เลือกเพจที่ดูแลก่อนนะ');return}
+  toast('กำลังบันทึก…');
+  try{
+    const res=await api({action:'setUser',id:u.id,nick,role,pages,status:st});
+    if(!res.ok){toast(res.error==='CANNOT_LOCK_SELF'?'ปิดสิทธิ์ตัวเองไม่ได้':'บันทึกไม่ได้: '+res.error);return}
+    Object.assign(u,{nick,role,pages,status:st}); toast('บันทึกแล้ว ✅');
+    DATA.pendingUsers=USERS.users.filter(x=>x.status==='รออนุมัติ').length; render();
+  }catch(e){toast('เชื่อมต่อไม่ได้')}
+}
+
 function render(){
   const d=DATA,k=d.kpi,me=d.me;
   const pct=k.targetToday?Math.min(100,Math.round(k.doneToday/k.targetToday*100)):0;
   const tabs=[['home','🏠 ภาพรวม'],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
+  const isAdmin=me.role==='แอดมิน';
+  if(isAdmin) tabs.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
   let body='';
-  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else body=probsView(d);
+  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else body=probsView(d);
   $app.innerHTML=`
   <header><div class="wrap">
     <img src="${esc(me.picture)}" alt="">
@@ -195,7 +268,7 @@ function render(){
       <div class="kpi"><div class="l">🎯 Reels เดือนนี้</div><div class="v">${k.reels}</div><div class="s">${k.reelsNext?esc(k.reelsNext)+' (อีก '+esc(k.reelsNeed)+')':'คลิปของเพจที่ดูแล'}</div></div>
       <div class="kpi ${k.redPages?'alert':''}"><div class="l">🚦 เพจต้องรีบ</div><div class="v">${k.redPages}</div><div class="s">จาก ${k.totalPages} เพจ</div></div>
     </div>
-    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
+    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
     ${body}
     <div class="foot">ข้อมูลอัปเดตจากไฟล์ของแต่ละเพจ · บันทึกงานที่ไฟล์เพจ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
   </div>`;
