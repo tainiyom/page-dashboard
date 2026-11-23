@@ -107,6 +107,18 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .donebox{margin-top:12px}.donebox summary{cursor:pointer;font-weight:700;color:var(--green);padding:8px 0}
 .kpis.share{grid-template-columns:repeat(4,1fr)}
 @media(max-width:640px){.kpis.share{grid-template-columns:repeat(2,1fr)}}
+.tabs.sm{margin-top:4px}.tabs.sm button{padding:5px 12px;font-size:13px}
+.btn.ghost.live{font-size:13px;padding:6px 10px;margin-right:6px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
+.ph{display:flex;align-items:center;gap:10px;font-size:16.5px}.ph .sp{flex:1}
+.rank{width:26px;height:26px;border-radius:50%;background:#1B2B4B;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.score{font-size:26px;font-weight:800;line-height:1;text-align:right}.score small{display:block;font-size:11px;color:var(--mute);font-weight:600}
+.score.green{color:var(--green)}.score.yellow{color:#c99700}.score.red{color:var(--red)}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pgrid>div{background:#f5f7fb;border-radius:10px;padding:7px 9px}.pgrid .l{font-size:12px;color:var(--mute)}.pgrid .v{font-size:17px;font-weight:800}.pgrid .v.bad{color:var(--red)}
+.warnbox{background:#FFF4E5;border:1px solid #f5c38a;color:#8a4b00;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
+.how{margin-top:8px}.how summary{cursor:pointer;color:var(--mute);font-size:13.5px}
+.chip.gray{background:#eef1f6;color:var(--mute)}
 </style>
 </head>
 <body>
@@ -158,7 +170,7 @@ async function boot(){
 // กลับมาหน้านี้ (เช่น หลังไปสร้างลิงก์ในไฟล์เพจ) ให้ดึงข้อมูลใหม่เอง
 let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(VIEW==='share')loadShare();}
+  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(VIEW==='share')loadShare();if(VIEW==='perf')loadPerf();}
 });
 async function load(){
   LAST_LOAD=Date.now();
@@ -231,6 +243,48 @@ function shareCard(t){
   </div>`;
 }
 
+/* ===== ผลงานพนักงาน ===== */
+let PERF=null, PERF_P='week', PERF_BUSY=false;
+async function loadPerf(p){
+  if(p) PERF_P=p;
+  if(PERF_BUSY) return; PERF_BUSY=true; PERF=null; if(DATA) render();
+  try{const res=await api({action:'perf',period:PERF_P}); PERF=res.ok?res:{error:res.error};}
+  catch(e){PERF={error:'เชื่อมต่อไม่ได้'}}
+  PERF_BUSY=false; if(DATA) render();
+}
+function grade(sc){return sc==null?['gray','—']:sc>=85?['green','🟢 ดีมาก']:sc>=60?['yellow','🟡 พอใช้']:['red','🔴 ต้องปรับ']}
+function pct(v){return v==null?'—':v+'%'}
+function perfView(){
+  const per=[['today','วันนี้'],['week','7 วัน'],['month','เดือนนี้']];
+  const sw=`<div class="tabs sm">${per.map(x=>`<button class="${PERF_P===x[0]?'on':''}" onclick="loadPerf('${x[0]}')">${x[1]}</button>`).join('')}</div>`;
+  const title=`<h2>📈 ผลงานพนักงาน</h2>${sw}`;
+  if(!PERF) return title+`<div class="empty">⏳ กำลังคำนวณผลงาน…</div>`;
+  if(PERF.error) return title+`<div class="empty">โหลดไม่ได้: ${esc(PERF.error)} <button class="btn small" onclick="loadPerf()">ลองใหม่</button></div>`;
+  const d=PERF;
+  const how=`<details class="how"><summary>คะแนนคิดยังไง?</summary><div class="meta">คะแนน = เฉลี่ยของ ① ลงตรงเวลา (ไม่เลยวันที่กำหนด) ② งานครบถ้วน (ใส่ลิงก์โพสต์ ลิงก์ Sub ID ติ๊กป้าย AI ครบ) ③ คลิปวิดีโอ Shopee ทำได้ตามเป้า · 🟢 85 ขึ้นไป · 🟡 60–84 · 🔴 ต่ำกว่า 60<br>ระบบนับงานจากชื่อในช่อง "ผู้อัป" (ไฟล์เพจ Reel) และ "ผู้โพสต์" (ไฟล์งานแชร์) ต้องตรงกับชื่อเล่นในระบบ · วิดีโอนับตามผู้ดูแลช่อง</div></details>`;
+  if(!d.people.length){
+    return title+`<div class="empty">${d.boss?'ยังไม่มีผลงานในช่วงนี้':`ยังไม่พบผลงานของ "${esc(d.myName)}" ในช่วงนี้<br><small>ตอนบันทึกงาน ให้ใส่ชื่อ "${esc(d.myName)}" ในช่อง ผู้อัป / ผู้โพสต์</small>`}</div>`+how;
+  }
+  const rows=d.people.map((p,i)=>{
+    const g=grade(p.score);
+    return `<div class="pcard">
+      <div class="ph">${d.boss?`<span class="rank">${i+1}</span>`:''}<b>${esc(p.name)}</b><span class="sp"></span><span class="score ${g[0]}">${p.score==null?'—':p.score}<small>คะแนน</small></span></div>
+      <div class="chip ${g[0]}" style="align-self:flex-start">${g[1]}</div>
+      <div class="pgrid">
+        <div><div class="l">🎬 คลิป Reel</div><div class="v">${p.reel.done}</div></div>
+        <div><div class="l">🛒 แชร์ลิงก์</div><div class="v">${p.share.done}</div></div>
+        <div><div class="l">📹 วิดีโอ Shopee</div><div class="v">${p.video.target?p.video.done+' / '+p.video.target:'—'}</div></div>
+        <div><div class="l">⏱️ ตรงเวลา</div><div class="v">${pct(p.onTimePct)}</div></div>
+        <div><div class="l">✅ ครบถ้วน</div><div class="v">${pct(p.completePct)}</div></div>
+        <div><div class="l">📦 วิดีโอค้าง</div><div class="v ${p.video.backlog>=10?'bad':''}">${p.video.target?p.video.backlog:'—'}</div></div>
+      </div>
+      ${p.video.channels.length?`<div class="meta">ช่องที่ดูแล: ${p.video.channels.map(c=>esc(c.name.replace(/\s*\(.*\)/,''))+' '+c.done+'/'+c.target).join(' · ')}</div>`:''}
+    </div>`;}).join('');
+  return title+`<div class="meta" style="margin:-2px 0 10px">ช่วง ${esc(d.start.split('-').reverse().join('/'))} – ${esc(d.today.split('-').reverse().join('/'))}${d.videoNote?' · '+esc(d.videoNote):''}</div>
+    ${d.unnamed?`<div class="warnbox">⚠️ มีงานที่ลงแล้วแต่ไม่ได้ใส่ชื่อผู้ลง ${d.unnamed.posted} งาน (Reel ${d.unnamed.reel.done} · แชร์ลิงก์ ${d.unnamed.share.done}) — งานพวกนี้ยังไม่ถูกนับให้ใคร</div>`:''}
+    ${rows}${how}`;
+}
+
 /* ===== หลังบ้านแอดมิน ===== */
 let USERS=null, USERS_BUSY=false;
 async function api(body){
@@ -300,15 +354,17 @@ function render(){
   const pct=k.targetToday?Math.min(100,Math.round(k.doneToday/k.targetToday*100)):0;
   const tabs=[['home','🏠 ภาพรวม'],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
   tabs.push(['share',`🛒 แชร์ลิงก์${SHARE&&SHARE.kpi?` (${SHARE.kpi.pending+SHARE.kpi.overdue})`:''}`]);
+  tabs.push(['perf','📈 ผลงาน']);
   const isAdmin=me.role==='แอดมิน';
   if(isAdmin) tabs.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
   let body='';
-  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else if(VIEW==='share') body=shareView(); else body=probsView(d);
+  if(VIEW==='home') body=homeView(d); else if(VIEW==='tasks') body=tasksView(d); else if(VIEW==='users'&&isAdmin) body=usersView(); else if(VIEW==='share') body=shareView(); else if(VIEW==='perf') body=perfView(); else body=probsView(d);
   $app.innerHTML=`
   <header><div class="wrap">
     <img src="${esc(me.picture)}" alt="">
     <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · ${d.seeAll?'ดูทุกเพจ':'เพจที่ดูแล '+k.totalPages+' เพจ'} · อัปเดต ${esc(d.updated)}</div></div>
     <div class="sp"></div>
+    <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
     <button class="btn ghost" onclick="load()">↻</button>
   </div></header>
   <div class="wrap">
@@ -320,7 +376,7 @@ function render(){
       <div class="kpi"><div class="l">🎯 Reels เดือนนี้</div><div class="v">${k.reels}</div><div class="s">${k.reelsNext?esc(k.reelsNext)+' (อีก '+esc(k.reelsNeed)+')':'คลิปของเพจที่ดูแล'}</div></div>
       <div class="kpi ${k.redPages?'alert':''}"><div class="l">🚦 เพจต้องรีบ</div><div class="v">${k.redPages}</div><div class="s">จาก ${k.totalPages} เพจ</div></div>
     </div>
-    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();if(VIEW==='share')loadShare();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
+    <div class="tabs">${tabs.map(t=>`<button class="${VIEW===t[0]?'on':''}" onclick="VIEW='${t[0]}';if(VIEW==='users')loadUsers();if(VIEW==='share')loadShare();if(VIEW==='perf')loadPerf();render();scrollTo(0,0)">${t[1]}</button>`).join('')}</div>
     ${body}
     <div class="foot">ข้อมูลอัปเดตจากไฟล์ของแต่ละเพจ · บันทึกงานที่ไฟล์เพจ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
   </div>`;
