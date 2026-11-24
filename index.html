@@ -145,6 +145,7 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .minfo{flex:1}.mt{font-weight:800;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ms{font-size:14px;margin-top:4px}.mtip{font-size:13.5px;color:#5a4300;margin-top:6px}
 .mteam{margin-top:10px;padding-top:10px;border-top:1px dashed #cdd6ee;font-size:14px}
+.mteam.solo{margin-top:0;padding-top:0;border-top:none;padding-right:20px}
 .mfoot{margin-top:8px;text-align:right}
 </style>
 </head>
@@ -315,9 +316,9 @@ function myDayCard(){
   if(d.boss){
     const sc=d.people.filter(p=>p.score!=null);
     const avg=sc.length?Math.round(sc.reduce((a,p)=>a+p.score,0)/sc.length):null;
-    const low=d.people.filter(p=>p.score!=null&&p.score<60).map(p=>p.name);
+    const low=d.people.filter(p=>p.total&&p.score!=null&&p.score<60).map(p=>p.name);
     const none=d.people.filter(p=>!p.total).map(p=>p.name);
-    team=`<div class="mteam">👥 ทีมวันนี้ ${d.people.length} คน · คะแนนเฉลี่ย <b>${avg==null?'—':avg}</b>${low.length?` · 🔴 ต้องปรับ: <b>${low.map(esc).join(', ')}</b>`:''}${none.length?` · ⏳ ยังไม่มีงานวันนี้: ${none.map(esc).join(', ')}`:''}</div>`;
+    team=`<div class="mteam${mine?'':' solo'}">👥 ทีมวันนี้ ${d.people.length} คน · คะแนนเฉลี่ย <b>${avg==null?'—':avg}</b>${low.length?` · 🔴 ต้องปรับ: <b>${low.map(esc).join(', ')}</b>`:''}${none.length?` · ⏳ ยังไม่มีงานวันนี้: ${none.map(esc).join(', ')}`:''}</div>`;
   }
   return `<div class="myday">${close}${mine}${team}<div class="mfoot">${more}</div></div>`;
 }
