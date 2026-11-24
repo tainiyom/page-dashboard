@@ -149,6 +149,7 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .mfoot{margin-top:8px;text-align:right}
 .onair{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 2px;padding:8px 10px;background:#fff5f5;border:1px solid #ffd6d6;border-radius:10px;font-size:14px}.onair small{color:var(--mute)}
 .spc{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#fff1ea;color:#c2410c;font-size:12px;font-weight:600;vertical-align:middle;white-space:nowrap}
+.viewas{position:sticky;top:0;z-index:50;background:#fde68a;color:#78350f;padding:8px 14px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}.viewas .btn{background:#78350f;color:#fff}
 </style>
 </head>
 <body>
@@ -209,6 +210,10 @@ let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();loadMyDay();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf();}
 });
+let VIEW_AS=null;
+function resetViews(){SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
+function viewAs(i){const u=USERS.users[i];VIEW_AS={id:u.id,name:u.nick||u.lineName,role:u.role};resetViews();PLAT='meta';SUB='fbB';INNER='home';GA_TAB='pages';window.scrollTo(0,0);load();loadMyDay();toast('กำลังดูในมุมมองของ '+VIEW_AS.name)}
+function exitViewAs(){VIEW_AS=null;resetViews();PLAT='users';window.scrollTo(0,0);load();loadMyDay()}
 async function load(){
   LAST_LOAD=Date.now();
   const token=liff.getIDToken();
@@ -216,7 +221,7 @@ async function load(){
   if(!DATA) screen('⏳','กำลังโหลดข้อมูล…','ดึงสถานะงานล่าสุดจากทุกเพจ');
   let res;
   try{
-    const r=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'data',token})});
+    const r=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action:'data',token},VIEW_AS?{as:VIEW_AS.id}:{}))});
     res=await r.json();
   }catch(e){
     screen('📶','เชื่อมต่อไม่ได้','ตรวจอินเทอร์เน็ตแล้วลองใหม่',`<button class="btn small" onclick="load()">ลองใหม่</button>`);return;
@@ -373,7 +378,7 @@ function perfView(){
 /* ===== หลังบ้านแอดมิน ===== */
 let USERS=null, USERS_BUSY=false;
 async function api(body){
-  const r=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:liff.getIDToken()},body))});
+  const r=await fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:liff.getIDToken()},VIEW_AS?{as:VIEW_AS.id}:{},body))});
   return r.json();
 }
 async function loadUsers(){
@@ -411,6 +416,7 @@ function userCard(u,i){
       ${(USERS.videoNames||[]).length?`<div class="pgrp">🛍️ Shopee Video (${USERS.videoNames.length} ช่อง)</div>`+USERS.videoNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n.replace(/\s*\(.*\)/,''))}</label>`).join(''):''}
       ${(USERS.sharePageNames||[]).length?`<div class="pgrp">📘 FB Affiliate Group A (${USERS.sharePageNames.length} เพจ) <a href="#" onclick="event.preventDefault();pickGroup(${i},'A')">เลือกทั้งกลุ่ม</a></div>`+USERS.sharePageNames.map(n=>`<label class="pchk"><input type="checkbox" data-p="${esc(n)}" ${all||mine.indexOf(n)>=0?'checked':''} ${all?'disabled':''}> ${esc(n)}</label>`).join(''):''}</div>
     <div class="acts" style="margin-top:10px">
+      ${!u.self&&u.status==='อนุมัติ'?`<button class="btn small" onclick="viewAs(${i})">👁 ดูมุมมองนี้</button>`:''}
       ${u.self?'':(u.status==='อนุมัติ'?`<button class="btn small" onclick="saveUser(${i},'ปิด')">🔒 ปิดสิทธิ์</button>`:`<button class="btn sub" onclick="saveUser(${i},'อนุมัติ')">✅ อนุมัติ</button>`)}
       <button class="btn open" onclick="saveUser(${i})">💾 บันทึก</button>
     </div>
@@ -572,6 +578,7 @@ function render(){
   if(isAdmin) plats.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
   const subs=NAVS[PLAT]?NAVS[PLAT].subs:null;
   $app.innerHTML=`
+  ${VIEW_AS?`<div class="viewas">👁 กำลังดูในมุมมองของ <b>${esc(VIEW_AS.name)}</b> (${esc(me.role)}) · เห็นเหมือนที่เขาเห็นทุกอย่าง <button class="btn small" onclick="exitViewAs()">✕ กลับมุมมองแอดมิน</button></div>`:''}
   <header><div class="wrap">
     <img src="${esc(me.picture)}" alt="">
     <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · อัปเดต ${esc(d.updated)}</div></div>
