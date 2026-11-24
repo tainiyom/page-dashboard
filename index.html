@@ -247,7 +247,7 @@ async function loadShare(){
   catch(e){SHARE={error:'เชื่อมต่อไม่ได้'}}
   SHARE_BUSY=false; if(DATA) render();
 }
-function shareView(){
+function shareView(mode){
   if(!SHARE) return `<h2>🛒 แชร์ลิงก์เพจป้ายยา</h2><div class="empty">⏳ กำลังโหลดงานแชร์ลิงก์…</div>`;
   if(SHARE.error) return `<h2>🛒 แชร์ลิงก์เพจป้ายยา</h2><div class="empty">โหลดไม่ได้: ${esc(SHARE.error)} <button class="btn small" onclick="SHARE=null;loadShare();render()">ลองใหม่</button></div>`;
   const k=SHARE.kpi, it=SHARE.items, todo=it.filter(x=>!x.posted), done=it.filter(x=>x.posted);
@@ -259,6 +259,7 @@ function shareView(){
     <div class="kpi ${k.overdue?'alert':''}"><div class="l">⏰ ค้างจากวันก่อน</div><div class="v">${k.overdue}</div><div class="s">${k.overdue?'โพสต์ก่อนงานวันนี้':'ไม่มีงานค้าง 👍'}</div></div>
     <div class="kpi ${k.noSub?'alert':''}"><div class="l">🔗 ยังไม่มีลิงก์แชร์</div><div class="v">${k.noSub}</div><div class="s">ภาพยังไม่พร้อม ${k.noImage}</div></div>
   </div>`;
+  if(mode==='kpis') return head;
   if(!k.today&&!todo.length) return head+`<div class="empty">ยังไม่มีงานแชร์ลิงก์ของวันนี้${SHARE.latest?` (งานล่าสุด ${esc(SHARE.latest.split('-').reverse().join('/'))})`:''} · งานจะขึ้นเมื่อมีการเติมงานในไฟล์</div>`;
   return head+`
   ${todo.length?todo.map(shareCard).join(''):'<div class="empty">โพสต์ครบทุกเพจแล้ว 🎉</div>'}
@@ -473,15 +474,20 @@ function groupB(d){
     <div class="tabs sm">${inner.map(t=>`<button class="${INNER===t[0]?'on':''}" onclick="INNER='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
     ${body}`;
 }
+let GA_TAB='pages';
 function groupA(){
-  let grid='';
-  if(SHARE&&SHARE.pageStatus){
-    const lab={done:['green','✅ โพสต์แล้ว'],pending:['yellow','📝 รอโพสต์'],overdue:['red','⏰ ค้าง'],none:['gray','— ไม่มีงานวันนี้']};
-    const ord={overdue:0,pending:1,done:2,none:3};
-    const ps=[...SHARE.pageStatus].sort((a,b)=>ord[a.status]-ord[b.status]||a.name.localeCompare(b.name,'th'));
-    grid=`<details class="pgbox" ${SHARE.kpi&&SHARE.kpi.today?'':'open'}><summary>📋 รายชื่อ ${ps.length} เพจ และสถานะวันนี้</summary><div class="pglist">${ps.map(x=>`<div class="pgi ${lab[x.status][0]}"><span>${pageLinkS(x.name,x.fb)}</span><span class="chip ${lab[x.status][0]}">${lab[x.status][1]}</span></div>`).join('')}</div></details>`;
-  }
-  return `<div class="ghead"><h2>FB Affiliate Group A</h2><div class="meta">เพจแชร์ลิงก์ (ป้ายยา) · 1 โพสต์/เพจ/วัน · แปะลิงก์ในคอมเมนต์</div></div>`+shareView().replace(/^<h2>[\s\S]*?<\/h2>/,'')+grid;
+  const hd=`<div class="ghead"><h2>FB Affiliate Group A</h2><div class="meta">เพจแชร์ลิงก์ (ป้ายยา) · 1 โพสต์/เพจ/วัน · แปะลิงก์ในคอมเมนต์</div></div>`;
+  if(!SHARE||SHARE.error) return hd+shareView().replace(/^<h2>[\s\S]*?<\/h2>/,'');
+  const ps0=SHARE.pageStatus||[], todo=SHARE.items.filter(x=>!x.posted).length;
+  const tabs=`<div class="tabs sm">${[['pages',`📋 รายชื่อเพจ (${ps0.length})`],['tasks',`📝 งานวันนี้${todo?` (${todo})`:''}`]].map(t=>`<button class="${GA_TAB===t[0]?'on':''}" onclick="GA_TAB='${t[0]}';render()">${t[1]}</button>`).join('')}</div>`;
+  if(GA_TAB==='tasks') return hd+shareView().replace(/^<h2>[\s\S]*?<\/h2>/,'').replace('</div>\n  </div>','</div>\n  </div>'+tabs);
+  const lab={done:['green','✅ โพสต์แล้ว'],pending:['yellow','📝 รอโพสต์'],overdue:['red','⏰ ค้าง'],none:['gray','— ไม่มีงานวันนี้']};
+  const ord={overdue:0,pending:1,done:2,none:3};
+  const ps=[...ps0].sort((a,b)=>ord[a.status]-ord[b.status]||a.name.localeCompare(b.name,'th'));
+  const cnt=k=>ps.filter(x=>x.status===k).length;
+  const sum=`<div class="meta" style="margin:6px 0 10px">✅ โพสต์แล้ว ${cnt('done')} · 📝 รอโพสต์ ${cnt('pending')} · ⏰ ค้าง ${cnt('overdue')} · — ไม่มีงาน ${cnt('none')}</div>`;
+  const list=`<h2>📋 รายชื่อเพจ <span class="count">${ps.length}</span></h2>${sum}<div class="pglist">${ps.map(x=>`<div class="pgi ${lab[x.status][0]}"><span>${pageLinkS(x.name,x.fb)}</span><span class="chip ${lab[x.status][0]}">${lab[x.status][1]}</span></div>`).join('')}</div>`;
+  return hd+shareView('kpis').replace(/^<h2>[\s\S]*?<\/h2>/,'')+tabs+list;
 }
 function videoView(){
   const head=`<div class="ghead"><h2>Shopee Video</h2><div class="meta">ช่องวิดีโอ Shopee · เป้าวันละ 5 คลิป/ช่อง (จ.–ศ.)</div></div>`;
