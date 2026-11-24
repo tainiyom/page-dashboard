@@ -1,16 +1,23 @@
-<!doctype html><html><head><meta charset="utf-8"><title>logo</title></head><body style="font-family:sans-serif">
+<!doctype html><html><head><meta charset="utf-8"><title>recv</title></head><body style="font-family:sans-serif">
 <div id="s">...</div>
 <script>
+// ตัวกลางส่งข้อมูลเข้าระบบหลังบ้าน (ใช้ตอนหน้าเว็บต้นทางส่งตรงไม่ได้)
+// แบบโลโก้: #id=&k=&d=   ·   แบบข้อมูล: #p=<JSON ที่ encodeURIComponent แล้ว>&next=<ลิงก์ต่อไป (ไม่บังคับ)>
 (async()=>{
   const h=new URLSearchParams(location.hash.slice(1));
-  const id=h.get('id'), d=h.get('d'), k=h.get('k');
   const s=document.getElementById('s');
-  if(!id||!d||!k){s.textContent='NO DATA';document.title='LOGO-NODATA';return}
-  try{
-    const r=await fetch('https://script.google.com/macros/s/AKfycbwh19gGjyTtxY2oSor5P4QmRuNjq4wqitQlxZaXwkBzk8799-x_bSKy_jDQrgByu6g7UA/exec',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'saveLogo',secret:k,id:id,data:d})});
-    const j=await r.json();
-    s.textContent=j.ok?'OK '+id:'ERR '+j.error; document.title=j.ok?'LOGO-OK':'LOGO-ERR';
-  }catch(e){s.textContent='ERR '+e.message;document.title='LOGO-ERR'}
+  let body=null;
+  if(h.get('p')){ try{ body=JSON.parse(h.get('p')); }catch(e){} }
+  else if(h.get('id')&&h.get('d')&&h.get('k')){ body={action:'saveLogo',secret:h.get('k'),id:h.get('id'),data:h.get('d')}; }
+  const next=h.get('next');
   history.replaceState(null,'',location.pathname);
+  if(!body){s.textContent='NO DATA';document.title='RECV-NODATA';return}
+  try{
+    const r=await fetch('https://script.google.com/macros/s/AKfycbwh19gGjyTtxY2oSor5P4QmRuNjq4wqitQlxZaXwkBzk8799-x_bSKy_jDQrgByu6g7UA/exec',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+    const j=await r.json();
+    s.textContent=(j.ok?'OK ':'ERR ')+JSON.stringify(j);
+    document.title=j.ok?('RECV-OK '+(j.written!=null?j.written:'')):('RECV-ERR '+(j.error||''));
+    if(j.ok&&next&&/^https:\/\/([a-z0-9-]+\.)*shopee\.co\.th\//.test(next)) setTimeout(()=>location.href=next,300);
+  }catch(e){s.textContent='ERR '+e.message;document.title='RECV-ERR'}
 })();
 </script></body></html>

@@ -133,6 +133,9 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .plogo{width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:7px;display:inline-flex;align-items:center;justify-content:center;background:#eef1f6;font-size:12px;border:1px solid #e3e7ef}
 .pg .name .plogo{width:30px;height:30px}
 a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration-color:#1877F2}
+.spark{position:relative;display:flex;align-items:flex-end;gap:3px;height:54px;margin-top:4px;padding-top:4px}
+.spark i{flex:1;background:#3b5bdb;border-radius:3px 3px 0 0;opacity:.85}
+.spark em{position:absolute;left:0;right:0;border-top:1.5px dashed #e8590c}
 </style>
 </head>
 <body>
@@ -383,7 +386,7 @@ let PLAT='meta', SUB='fbB', INNER='home', VIDEO=null, VIDEO_BUSY=false;
 function go(plat,sub){
   if(plat==='perf'||plat==='users'){PLAT=plat;}else{PLAT=plat;SUB=sub||NAVS[plat].subs[0][0];}
   if(PLAT==='users')loadUsers(); if(PLAT==='perf'&&!PERF)loadPerf();
-  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive();
   render();scrollTo(0,0);
 }
 async function loadVideo(){
@@ -440,12 +443,44 @@ function videoView(){
     ${c.url?`<div><button class="btn open" onclick="openUrl('${esc(c.url)}')">📂 เปิดไฟล์ช่อง</button></div>`:''}
   </div>`}).join('')}</div>`;
 }
+let LIVE=null, LIVE_BUSY=false;
+async function loadLive(){
+  if(LIVE_BUSY) return; LIVE_BUSY=true;
+  try{const r=await api({action:'live'}); LIVE=r.ok?r:{error:r.error};}catch(e){LIVE={error:'เชื่อมต่อไม่ได้'}}
+  LIVE_BUSY=false; if(DATA) render();
+}
+const baht=n=>'฿'+Number(n||0).toLocaleString('th-TH');
 function liveView(){
-  const chs=['KCM','NAGACARE','Tinncare','Warawut'];
-  return `<div class="ghead"><h2>Shopee Live</h2><div class="meta">ช่องไลฟ์ Shopee · ลงกะ/แลกกะ ทำในตารางไลฟ์</div></div>
-  <div class="empty" style="text-align:left">📅 ตารางกะไลฟ์ และคนไลฟ์แต่ละกะ อยู่ในระบบตารางไลฟ์<br><button class="btn open" style="margin-top:8px" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 เปิดตารางไลฟ์</button><div class="meta" style="margin-top:8px">คะแนนกะไลฟ์ในหน้านี้ จะขึ้นหลังเชื่อมข้อมูลตารางไลฟ์</div></div>
-  <h2>📋 รายชื่อช่อง <span class="count">${chs.length}</span></h2>
-  <div class="pages">${chs.map(c=>`<div class="pg gray"><div class="top"><div class="name"><b class="pgn">${c}</b></div><span class="chip gray">ช่องไลฟ์</span></div></div>`).join('')}</div>`;
+  const head=`<div class="ghead"><h2>Shopee Live</h2><div class="meta">ช่องไลฟ์ Shopee · ข้อมูลจากรายงานไลฟ์ · ลงกะ/แลกกะ ทำในตารางไลฟ์ <a href="#" onclick="event.preventDefault();openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 เปิดตารางไลฟ์</a></div></div>`;
+  if(!LIVE) return head+`<div class="empty">⏳ กำลังโหลดข้อมูลไลฟ์…</div>`;
+  if(LIVE.error) return head+`<div class="empty">โหลดไม่ได้: ${esc(LIVE.error)} <button class="btn small" onclick="LIVE=null;loadLive();render()">ลองใหม่</button></div>`;
+  const d=LIVE, ch=d.channels;
+  let money='';
+  if(d.admin){
+    const tot=ch.reduce((a,c)=>({live7:a.live7+(c.live7||0),ads7:a.ads7+(c.ads7||0),coins7:a.coins7+(c.coins7||0),net7:a.net7+(c.net7||0),target:a.target+(c.target||0)}),{live7:0,ads7:0,coins7:0,net7:0,target:0});
+    const avg=Math.round(tot.live7/7), pctT=tot.target?Math.round(avg/tot.target*100):0;
+    money=`<div class="kpis share">
+      <div class="kpi"><div class="l">💰 ค่าคอมไลฟ์เฉลี่ย/วัน</div><div class="v">${baht(avg)}</div><div class="s">เป้า ${baht(tot.target)} · ${pctT}%</div><div class="bar"><i style="width:${Math.min(100,pctT)}%"></i></div></div>
+      <div class="kpi"><div class="l">📣 ค่าแอดไลฟ์ 7 วัน</div><div class="v">${baht(tot.ads7)}</div><div class="s">Coins ${baht(tot.coins7)}</div></div>
+      <div class="kpi ${tot.net7<0?'alert':''}"><div class="l">🧮 สุทธิ 7 วัน</div><div class="v">${baht(tot.net7)}</div><div class="s">ค่าคอมทุกช่องทาง − แอด − Coins</div></div>
+      <div class="kpi"><div class="l">📅 ข้อมูลถึง</div><div class="v" style="font-size:20px">${esc((d.latest||'—').split('-').reverse().join('/'))}</div><div class="s">ค่าคอมวันนี้ยังไม่ครบ</div></div>
+    </div>`;
+  }
+  const cards=ch.map(c=>{
+    if(!c.connected) return `<div class="pg gray"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip gray">ยังไม่เชื่อมข้อมูล</span></div></div>`;
+    if(!d.admin) return `<div class="pg green"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip green">ข้อมูลถึง ${esc(c.last.split('-').reverse().join('/'))}</span></div></div>`;
+    const p=c.target?Math.round(c.avg7/c.target*100):0, t=c.target?(p>=100?'green':p>=60?'yellow':'red'):'gray';
+    const mx=Math.max(...c.trend,c.target||0,1);
+    return `<div class="pg ${t}">
+      <div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip ${t}">${c.target?p+'% ของเป้า':'ยังไม่ตั้งเป้า'}</span></div>
+      <div class="stats"><span>ค่าคอมไลฟ์เฉลี่ย <b>${baht(c.avg7)}</b>/วัน</span><span>เป้า <b>${baht(c.target)}</b></span></div>
+      <div class="stats"><span>แอด 7 วัน <b>${baht(c.ads7)}</b></span><span>Coins <b>${baht(c.coins7)}</b></span><span>สุทธิ <b class="${c.net7<0?'bad':''}">${baht(c.net7)}</b></span></div>
+      <div class="spark">${c.trend.map((v,i)=>`<i title="${d.days[i]}: ${baht(v)}" style="height:${Math.max(3,v/mx*100)}%"></i>`).join('')}${c.target?`<em style="bottom:${c.target/mx*100}%"></em>`:''}</div>
+      <div class="meta">ค่าคอมไลฟ์รายวัน 14 วันล่าสุด · ข้อมูลถึง ${esc(c.last.split('-').reverse().join('/'))}</div>
+    </div>`;}).join('');
+  const ses=d.sessions.length?`<h2>🎥 ไลฟ์ล่าสุด <span class="count">${d.sessions.length}</span></h2>
+    <div class="pglist">${d.sessions.map(x=>`<div class="pgi ${x.status==='live'?'red':''}"><span><b>${esc(x.channel)}</b> · ${esc(x.start)}<br><small>${x.hours.toFixed(1)} ชม. · ${x.orders} ออเดอร์${x.sales!=null?' · ยอด '+baht(x.sales):''}</small></span><span class="chip ${x.status==='live'?'red':'gray'}">${x.status==='live'?'🔴 กำลังไลฟ์':'จบแล้ว'}</span></div>`).join('')}</div>`:'';
+  return head+money+`<h2>📋 รายชื่อช่อง <span class="count">${ch.length}</span></h2><div class="pages">${cards}</div>`+ses;
 }
 function soon(title,desc){return `<div class="ghead"><h2>${title}</h2></div><div class="empty">🚧 ${desc}<br><small>ยังไม่ได้เชื่อมข้อมูล · บอกได้ว่าจะให้ดึงจากไฟล์ไหน</small></div>`}
 
@@ -469,7 +504,7 @@ function render(){
     <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · อัปเดต ${esc(d.updated)}</div></div>
     <div class="sp"></div>
     <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
-    <button class="btn ghost" onclick="load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf()">↻</button>
+    <button class="btn ghost" onclick="load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='shopee'&&SUB==='live')loadLive();if(PLAT==='perf')loadPerf()">↻</button>
   </div></header>
   <div class="wrap">
     <div class="tabs plat">${plats.map(t=>`<button class="${PLAT===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>
