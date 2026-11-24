@@ -136,6 +136,16 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .spark{position:relative;display:flex;align-items:flex-end;gap:3px;height:54px;margin-top:4px;padding-top:4px}
 .spark i{flex:1;background:#3b5bdb;border-radius:3px 3px 0 0;opacity:.85}
 .spark em{position:absolute;left:0;right:0;border-top:1.5px dashed #e8590c}
+.myday{position:relative;margin-top:12px;background:linear-gradient(135deg,#eef3ff,#fff);border:1px solid #d6e0ff;border-radius:16px;padding:14px 16px}
+.myday.load{color:var(--mute);font-size:14px}
+.myday .x{position:absolute;top:8px;right:10px;border:none;background:none;font-size:15px;color:var(--mute);cursor:pointer}
+.mrow{display:flex;gap:14px;align-items:center}
+.mscore{min-width:84px;text-align:center;font-size:34px;font-weight:800;line-height:1}.mscore small{display:block;font-size:11px;color:var(--mute);font-weight:600;margin-top:4px}
+.mscore.green{color:var(--green)}.mscore.yellow{color:#c99700}.mscore.red{color:var(--red)}.mscore.gray{color:var(--mute)}
+.minfo{flex:1}.mt{font-weight:800;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ms{font-size:14px;margin-top:4px}.mtip{font-size:13.5px;color:#5a4300;margin-top:6px}
+.mteam{margin-top:10px;padding-top:10px;border-top:1px dashed #cdd6ee;font-size:14px}
+.mfoot{margin-top:8px;text-align:right}
 </style>
 </head>
 <body>
@@ -192,7 +202,7 @@ async function boot(){
 // กลับมาหน้านี้ (เช่น หลังไปสร้างลิงก์ในไฟล์เพจ) ให้ดึงข้อมูลใหม่เอง
 let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf();}
+  if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();loadMyDay();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf();}
 });
 async function load(){
   LAST_LOAD=Date.now();
@@ -220,6 +230,7 @@ async function load(){
   }
   if(!DATA&&res.pages&&!res.pages.length&&!res.seeAll){SUB='fbA';loadShare();}
   if(!DATA&&!Object.keys(LOGOS).length) setTimeout(loadLogos,300);
+  if(!DATA) setTimeout(loadMyDay,100);
   DATA=res; render();
 }
 
@@ -265,6 +276,50 @@ function shareCard(t){
     <div class="meta">👉 โพสต์เสร็จ: เปลี่ยนสถานะเป็น "โพสต์แล้ว" + วางลิงก์โพสต์ในคอลัมน์ K</div>
     ${t.caption?`<details><summary>ดูแคปชัน / หมายเหตุ</summary><div class="cap">${esc(t.caption)}</div>${t.note?`<div class="meta">📝 ${esc(t.note)}</div>`:''}</details>`:''}`}
   </div>`;
+}
+
+/* ===== การ์ดผลงานของฉันวันนี้ (หน้าแรก) ===== */
+let MYDAY=null, MYDAY_HIDE=false;
+async function loadMyDay(){
+  try{const r=await api({action:'perf',period:'today'}); MYDAY=r.ok?r:null;}catch(e){MYDAY=null}
+  if(DATA) render();
+}
+function myDayCard(){
+  if(MYDAY_HIDE||PLAT==='perf') return '';
+  if(!MYDAY) return `<div class="myday load">⏳ กำลังคำนวณผลงานวันนี้…</div>`;
+  const d=MYDAY, me=d.people.find(p=>p.name===d.myName);
+  const close=`<button class="x" onclick="MYDAY_HIDE=true;render()" title="ซ่อน">✕</button>`;
+  const more=`<button class="btn small" onclick="go('perf')">ดูผลงานเต็ม →</button>`;
+  let mine='';
+  if(me){
+    const g=grade(me.score);
+    const parts=[];
+    if(me.reel.done) parts.push(`🎬 คลิป Reel <b>${me.reel.done}</b>`);
+    if(me.share.done) parts.push(`🛒 แชร์ลิงก์ <b>${me.share.done}</b>`);
+    if(me.video.target) parts.push(`📹 วิดีโอ <b>${me.video.done}/${me.video.target}</b>`);
+    const tips=[];
+    if(me.onTimePct!=null&&me.onTimePct<100) tips.push('มีงานลงช้ากว่ากำหนด');
+    if(me.completePct!=null&&me.completePct<100) tips.push('มีงานที่ยังกรอกไม่ครบ (ลิงก์โพสต์/ลิงก์ Sub ID)');
+    if(me.video.target&&me.video.done<me.video.target) tips.push(`วิดีโอขาดอีก ${me.video.target-me.video.done} คลิป`);
+    if(me.video.backlog>=10) tips.push(`วิดีโอค้างสะสม ${me.video.backlog} คลิป`);
+    mine=`<div class="mrow"><div class="mscore ${g[0]}">${me.score==null?'—':me.score}<small>คะแนนวันนี้</small></div>
+      <div class="minfo"><div class="mt">ผลงานของฉันวันนี้ <span class="chip ${g[0]}">${g[1]}</span></div>
+      <div class="ms">${parts.join(' · ')||'ยังไม่มีงานที่ลงวันนี้'}${me.onTimePct!=null?` · ตรงเวลา <b>${me.onTimePct}%</b> · ครบถ้วน <b>${me.completePct}%</b>`:''}</div>
+      <div class="mtip">${tips.length?'👉 '+tips.join(' · '):'👍 วันนี้เรียบร้อยดี ทำต่อแบบนี้เลย'}</div></div></div>`;
+  }else if(!d.boss){
+    mine=`<div class="mrow"><div class="mscore gray">—<small>คะแนนวันนี้</small></div><div class="minfo"><div class="mt">ผลงานของฉันวันนี้</div>
+      <div class="ms">ยังไม่พบงานที่ลงวันนี้ในชื่อ "<b>${esc(d.myName)}</b>"</div>
+      <div class="mtip">👉 ลงงานเสร็จแล้ว ใส่ชื่อ "${esc(d.myName)}" ในช่องผู้อัป / ผู้โพสต์ ระบบจะนับให้</div></div></div>`;
+  }
+  let team='';
+  if(d.boss){
+    const sc=d.people.filter(p=>p.score!=null);
+    const avg=sc.length?Math.round(sc.reduce((a,p)=>a+p.score,0)/sc.length):null;
+    const low=d.people.filter(p=>p.score!=null&&p.score<60).map(p=>p.name);
+    const none=d.people.filter(p=>!p.total).map(p=>p.name);
+    team=`<div class="mteam">👥 ทีมวันนี้ ${d.people.length} คน · คะแนนเฉลี่ย <b>${avg==null?'—':avg}</b>${low.length?` · 🔴 ต้องปรับ: <b>${low.map(esc).join(', ')}</b>`:''}${none.length?` · ⏳ ยังไม่มีงานวันนี้: ${none.map(esc).join(', ')}`:''}</div>`;
+  }
+  return `<div class="myday">${close}${mine}${team}<div class="mfoot">${more}</div></div>`;
 }
 
 /* ===== ผลงานพนักงาน ===== */
@@ -504,10 +559,11 @@ function render(){
     <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · อัปเดต ${esc(d.updated)}</div></div>
     <div class="sp"></div>
     <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
-    <button class="btn ghost" onclick="load();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='shopee'&&SUB==='live')loadLive();if(PLAT==='perf')loadPerf()">↻</button>
+    <button class="btn ghost" onclick="load();loadMyDay();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='shopee'&&SUB==='live')loadLive();if(PLAT==='perf')loadPerf()">↻</button>
   </div></header>
   <div class="wrap">
     <div class="tabs plat">${plats.map(t=>`<button class="${PLAT===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>
+    ${myDayCard()}
     ${subs?`<div class="tabs subt">${subs.map(t=>`<button class="${SUB===t[0]?'on':''}" onclick="go('${PLAT}','${t[0]}')">${t[1]}</button>`).join('')}</div>`:''}
     ${body}
     <div class="foot">ข้อมูลอัปเดตจากไฟล์งานแต่ละเพจ/ช่อง · บันทึกงานที่ไฟล์ แล้วกด ↻ เพื่อดูสถานะใหม่</div>
