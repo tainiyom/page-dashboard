@@ -147,6 +147,7 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .mteam{margin-top:10px;padding-top:10px;border-top:1px dashed #cdd6ee;font-size:14px}
 .mteam.solo{margin-top:0;padding-top:0;border-top:none;padding-right:20px}
 .mfoot{margin-top:8px;text-align:right}
+.onair{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 2px;padding:8px 10px;background:#fff5f5;border:1px solid #ffd6d6;border-radius:10px;font-size:14px}.onair small{color:var(--mute)}
 </style>
 </head>
 <body>
@@ -522,13 +523,19 @@ function liveView(){
       <div class="kpi"><div class="l">📅 ข้อมูลถึง</div><div class="v" style="font-size:20px">${esc((d.latest||'—').split('-').reverse().join('/'))}</div><div class="s">ค่าคอมวันนี้ยังไม่ครบ</div></div>
     </div>`;
   }
+  const OA=(d.onair&&d.onair.ch)||{};
+  const onair=n=>{const o=OA[n]; if(!o) return '';
+    const now=o.now.length?o.now.map(p=>`<b>${esc(p.nick)}</b> <small>(${esc(p.shift)})</small>`).join(', '):'<b class="bad">ไม่มีคนลงกะ</b>';
+    const nx=o.next?`<span>⏭ ถัดไป <b>${esc(o.next.nick)}</b> <small>${esc(o.next.at.slice(0,5)===todayDM()?o.next.at.slice(6):o.next.at)}</small></span>`:'<span>⏭ ถัดไป <small>ยังไม่มีคนลง</small></span>';
+    return `<div class="onair"><span>🔴 กำลังไลฟ์: ${now}</span>${nx}</div>`;};
   const cards=ch.map(c=>{
-    if(!c.connected) return `<div class="pg gray"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip gray">ยังไม่เชื่อมข้อมูล</span></div></div>`;
-    if(!d.admin) return `<div class="pg green"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip green">ข้อมูลถึง ${esc(c.last.split('-').reverse().join('/'))}</span></div></div>`;
+    if(!c.connected) return `<div class="pg gray"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip gray">ยังไม่เชื่อมข้อมูล</span></div>${onair(c.name)}</div>`;
+    if(!d.admin) return `<div class="pg green"><div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip green">ข้อมูลถึง ${esc(c.last.split('-').reverse().join('/'))}</span></div>${onair(c.name)}</div>`;
     const p=c.target?Math.round(c.avg7/c.target*100):0, t=c.target?(p>=100?'green':p>=60?'yellow':'red'):'gray';
     const mx=Math.max(...c.trend,c.target||0,1);
     return `<div class="pg ${t}">
       <div class="top"><div class="name"><b class="pgn">${c.name}</b></div><span class="chip ${t}">${c.target?p+'% ของเป้า':'ยังไม่ตั้งเป้า'}</span></div>
+      ${onair(c.name)}
       <div class="stats"><span>ค่าคอมไลฟ์เฉลี่ย <b>${baht(c.avg7)}</b>/วัน</span><span>เป้า <b>${baht(c.target)}</b></span></div>
       <div class="stats"><span>แอด 7 วัน <b>${baht(c.ads7)}</b></span><span>Coins <b>${baht(c.coins7)}</b></span><span>สุทธิ <b class="${c.net7<0?'bad':''}">${baht(c.net7)}</b></span></div>
       <div class="spark">${c.trend.map((v,i)=>`<i title="${d.days[i]}: ${baht(v)}" style="height:${Math.max(3,v/mx*100)}%"></i>`).join('')}${c.target?`<em style="bottom:${c.target/mx*100}%"></em>`:''}</div>
@@ -538,6 +545,7 @@ function liveView(){
     <div class="pglist">${d.sessions.map(x=>`<div class="pgi ${x.status==='live'?'red':''}"><span><b>${esc(x.channel)}</b> · ${esc(x.start)}<br><small>${x.hours.toFixed(1)} ชม. · ${x.orders} ออเดอร์${x.sales!=null?' · ยอด '+baht(x.sales):''}</small></span><span class="chip ${x.status==='live'?'red':'gray'}">${x.status==='live'?'🔴 กำลังไลฟ์':'จบแล้ว'}</span></div>`).join('')}</div>`:'';
   return head+money+`<h2>📋 รายชื่อช่อง <span class="count">${ch.length}</span></h2><div class="pages">${cards}</div>`+ses;
 }
+function todayDM(){const x=new Date();return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')}
 function soon(title,desc){return `<div class="ghead"><h2>${title}</h2></div><div class="empty">🚧 ${desc}<br><small>ยังไม่ได้เชื่อมข้อมูล · บอกได้ว่าจะให้ดึงจากไฟล์ไหน</small></div>`}
 
 function render(){
