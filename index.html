@@ -148,6 +148,7 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .mteam.solo{margin-top:0;padding-top:0;border-top:none;padding-right:20px}
 .mfoot{margin-top:8px;text-align:right}
 .onair{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 2px;padding:8px 10px;background:#fff5f5;border:1px solid #ffd6d6;border-radius:10px;font-size:14px}.onair small{color:var(--mute)}
+.spc{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#fff1ea;color:#c2410c;font-size:12px;font-weight:600;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -176,6 +177,8 @@ function logoImg(fb){const l=LOGOS[fbId(fb)];return l?`<img class="plogo" src="$
 function pageLink(name,fb){
   return fb?`<a class="pgn" href="#" onclick="event.preventDefault();openUrl('${esc(fb)}')">${logoImg(fb)}${esc(name)} <span class="fb">↗</span></a>`:`<b class="pgn">${esc(name)}</b>`;
 }
+function shopeeChip(name){const v=DATA&&DATA.shopee&&DATA.shopee[name];return v?`<span class="spc" title="บัญชี Shopee ที่เชื่อมกับเพจนี้">🛒 ${esc(v)}</span>`:''}
+function pageLinkS(name,fb){return pageLink(name,fb)+shopeeChip(name)}
 function openUrl(u){if(!u)return;if(window.liff&&liff.isInClient&&liff.isInClient()){liff.openWindow({url:u,external:true})}else{window.open(u,'_blank')}}
 async function copy(t,label){
   try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}
@@ -476,7 +479,7 @@ function groupA(){
     const lab={done:['green','✅ โพสต์แล้ว'],pending:['yellow','📝 รอโพสต์'],overdue:['red','⏰ ค้าง'],none:['gray','— ไม่มีงานวันนี้']};
     const ord={overdue:0,pending:1,done:2,none:3};
     const ps=[...SHARE.pageStatus].sort((a,b)=>ord[a.status]-ord[b.status]||a.name.localeCompare(b.name,'th'));
-    grid=`<details class="pgbox" ${SHARE.kpi&&SHARE.kpi.today?'':'open'}><summary>📋 รายชื่อ ${ps.length} เพจ และสถานะวันนี้</summary><div class="pglist">${ps.map(x=>`<div class="pgi ${lab[x.status][0]}">${pageLink(x.name,x.fb)}<span class="chip ${lab[x.status][0]}">${lab[x.status][1]}</span></div>`).join('')}</div></details>`;
+    grid=`<details class="pgbox" ${SHARE.kpi&&SHARE.kpi.today?'':'open'}><summary>📋 รายชื่อ ${ps.length} เพจ และสถานะวันนี้</summary><div class="pglist">${ps.map(x=>`<div class="pgi ${lab[x.status][0]}"><span>${pageLinkS(x.name,x.fb)}</span><span class="chip ${lab[x.status][0]}">${lab[x.status][1]}</span></div>`).join('')}</div></details>`;
   }
   return `<div class="ghead"><h2>FB Affiliate Group A</h2><div class="meta">เพจแชร์ลิงก์ (ป้ายยา) · 1 โพสต์/เพจ/วัน · แปะลิงก์ในคอมเมนต์</div></div>`+shareView().replace(/^<h2>[\s\S]*?<\/h2>/,'')+grid;
 }
@@ -587,7 +590,7 @@ function homeView(d){
   <h2>📋 สถานะรายเพจ <span class="count">${pages.length}</span></h2>
   <div class="pages">${pages.map(p=>`
     <div class="pg ${tone(p.status)}">
-      <div class="top"><div class="name">${pageLink(p.name,p.fb)}</div><span class="chip ${tone(p.status)}">${esc(p.status)}</span></div>
+      <div class="top"><div class="name">${pageLinkS(p.name,p.fb)}</div><span class="chip ${tone(p.status)}">${esc(p.status)}</span></div>
       <div class="todo">👉 ${esc(p.todo)}</div>
       <div class="stats">
         <span>วันนี้ <b>${esc(p.doneTarget)}</b></span><span>7 วัน <b>${esc(p.week)}</b></span>
