@@ -398,7 +398,7 @@ function userCard(u,i){
       <span class="chip ${tone}">${esc(u.status)}</span></div>
     <div class="uf">
       <label>ชื่อเล่น<input data-k="nick" value="${esc(u.nick)}" placeholder="เช่น น้องมิ้น"></label>
-      <label>บทบาท<select data-k="role" ${u.self?'disabled':''}>${['พนักงาน','หัวหน้า','แอดมิน'].map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></label>
+      <label>บทบาท<select data-k="role" ${u.self?'disabled':''}>${['Trainee','พนักงาน','หัวหน้า','แอดมิน'].map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></label>
     </div>
     <div class="meta" style="margin-top:6px">เพจที่ดูแล</div>
     <div class="upages"><label class="pchk"><input type="checkbox" data-all ${all?'checked':''} onchange="toggleAll(${i},this.checked)"> ทั้งหมด</label>
@@ -422,7 +422,7 @@ async function saveUser(i,status){
   const role=el.querySelector('[data-k=role]').value;
   const nick=el.querySelector('[data-k=nick]').value.trim();
   const st=status||u.status;
-  if(st==='อนุมัติ'&&role==='พนักงาน'&&!pages){toast('เลือกเพจที่ดูแลก่อนนะ');return}
+  if(st==='อนุมัติ'&&(role==='พนักงาน'||role==='Trainee')&&!pages){toast('เลือกเพจที่ดูแลก่อนนะ');return}
   toast('กำลังบันทึก…');
   try{
     const res=await api({action:'setUser',id:u.id,nick,role,pages,status:st});
