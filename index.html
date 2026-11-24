@@ -176,7 +176,7 @@ function tone(s){s=s||'';if(s.startsWith('🔴'))return'red';if(s.startsWith('�
 let LOGOS={};
 try{const c=JSON.parse(localStorage.getItem('pd_logos')||'null');if(c&&Date.now()-c.t<6*3600e3)LOGOS=c.l||{};}catch(e){}
 async function loadLogos(){try{const r=await api({action:'logos'});if(r.ok){LOGOS=r.logos||{};try{localStorage.setItem('pd_logos',JSON.stringify({t:Date.now(),l:LOGOS}))}catch(e){}if(DATA)render();}}catch(e){}}
-function fbId(fb){const m=String(fb||'').match(/id=(\d+)/);return m?m[1]:''}
+function fbId(fb){const m=String(fb||'').match(/id=(\d+)/);if(m)return m[1];const v=String(fb||'').match(/facebook\.com\/([^/?#]+)/);return v?v[1].toLowerCase():''}
 function logoImg(fb){const l=LOGOS[fbId(fb)];return l?`<img class="plogo" src="${l}" alt="">`:`<span class="plogo none">📄</span>`}
 function pageLink(name,fb){
   return fb?`<a class="pgn" href="#" onclick="event.preventDefault();openUrl('${esc(fb)}')">${logoImg(fb)}${esc(name)} <span class="fb">↗</span></a>`:`<b class="pgn">${esc(name)}</b>`;
@@ -218,8 +218,8 @@ const FAST_URL='https://gexapkcuvultnrxiyvgd.supabase.co/functions/v1/pd-data';
 function fastGet(k){if(FORCE||!FAST||!FAST[k])return null;const v=FAST[k];return v&&v.ok===false?{error:v.error}:v}
 function applyFast(j){
   FAST=j.d; const d=j.d;
-  if(d.logos&&d.logos.logos&&!Object.keys(LOGOS).length){LOGOS=d.logos.logos}
-  SHARE=fastGet('share')||SHARE; TT=fastGet('tiktok')||TT; VIDEO=fastGet('video')||VIDEO; LIVE=fastGet('live')||LIVE;
+  if(d.logos&&d.logos.logos){LOGOS=d.logos.logos;try{localStorage.setItem('pd_logos',JSON.stringify({t:Date.now(),l:LOGOS}))}catch(e){}}
+  SHARE=fastGet('share')||SHARE; TT=fastGet('tiktok')||TT; OFF=fastGet('official')||OFF; VIDEO=fastGet('video')||VIDEO; LIVE=fastGet('live')||LIVE;
   const md=fastGet('perf_today'); if(md&&!md.error) MYDAY=md;
   if(d.users&&d.users.ok) USERS=d.users;
   const pf=fastGet('perf_'+PERF_P); if(pf) PERF=pf;
@@ -229,10 +229,10 @@ function applyFast(j){
 }
 function refreshAll(){
   FORCE=true; load(true); loadMyDay();
-  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if(PLAT==='perf')loadPerf(); if(PLAT==='users')loadUsers();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if(PLAT==='meta'&&SUB==='official')loadOfficial(); if(PLAT==='perf')loadPerf(); if(PLAT==='users')loadUsers();
   FORCE=false; toast('กำลังดึงข้อมูลสดจากชีต…');
 }
-function resetViews(){FAST=null;USERS=null;TT=null;SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
+function resetViews(){FAST=null;USERS=null;TT=null;OFF=null;SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
 function viewAs(i){const u=USERS.users[i];VIEW_AS={id:u.id,name:u.nick||u.lineName,role:u.role};resetViews();PLAT='meta';SUB='fbB';INNER='home';GA_TAB='pages';window.scrollTo(0,0);load();loadMyDay();toast('กำลังดูในมุมมองของ '+VIEW_AS.name)}
 function exitViewAs(){VIEW_AS=null;resetViews();PLAT='users';window.scrollTo(0,0);load();loadMyDay()}
 async function load(force){
@@ -489,7 +489,7 @@ let PLAT='meta', SUB='fbB', INNER='home', VIDEO=null, VIDEO_BUSY=false;
 function go(plat,sub){
   if(plat==='perf'||plat==='users'){PLAT=plat;}else{PLAT=plat;SUB=sub||NAVS[plat].subs[0][0];}
   if(PLAT==='users')loadUsers(); if(PLAT==='perf'&&!PERF)loadPerf();
-  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if(PLAT==='meta'&&SUB==='official')loadOfficial();
   render();scrollTo(0,0);
 }
 async function loadVideo(){
@@ -551,6 +551,37 @@ function videoView(){
     <div class="stats"><span>สัปดาห์ <b>${c.week}/${c.weekTarget}</b></span><span>ค้าง <b class="${c.backlog>=50?'bad':''}">${c.backlog}</b></span></div>
     ${c.url?`<div><button class="btn open" onclick="openUrl('${esc(c.url)}')">📂 เปิดไฟล์ช่อง</button></div>`:''}
   </div>`}).join('')}</div>`;
+}
+let OFF=null, OFF_BUSY=false;
+async function loadOfficial(){
+  const f=fastGet('official'); if(f){OFF=f; if(DATA) render(); return}
+  if(OFF_BUSY) return; OFF_BUSY=true;
+  try{const r=await api({action:'official'}); OFF=r.ok?r:{error:r.error};}catch(e){OFF={error:'เชื่อมต่อไม่ได้'}}
+  OFF_BUSY=false; if(DATA) render();
+}
+const OFF_CATS=[
+  ['🏢 บริษัท / ออฟฟิศ',c=>/ออฟฟิศ/.test(c)],
+  ['🌿 กัลยา (สมุนไพรแก้ลม)',c=>/กัลยา/.test(c)],
+  ['🍬 Tinn Herb (ลูกอมเลิกบุหรี่)',c=>/ติณณ์|tinn/i.test(c)],
+  ['💊 NATUR (เม็ดเคี้ยวคุมหิว)',c=>/natur/i.test(c)],
+  ['🧬 Beta / LAB FARM',c=>/beta/i.test(c)],
+  ['⚖️ ดูแลหุ่น (ริสยา · Dr.jel)',c=>/ริสยา|dr\.?jel/i.test(c)],
+  ['🌱 สมุนไพรอื่น (เฮิร์บแอสเซท · DM)',c=>/herbasset|^dm$/i.test(c)],
+  ['✨ ความงาม (Wink White)',c=>/wink/i.test(c)],
+  ['🌾 เกษตร / เมล็ดพันธุ์',c=>/เกษตร/.test(c)],
+  ['🏷️ KCM (X-NUTRI)',c=>/kcm/i.test(c)]];
+function officialView(){
+  const hd=`<div class="ghead"><h2>FB Page Official</h2><div class="meta">เพจทางการของบริษัทและแบรนด์ · จากไฟล์ "Naga เพจ facebook" แท็บ FB PAGE</div></div>`;
+  if(!OFF) return hd+`<div class="empty">⏳ กำลังโหลดรายชื่อเพจ…</div>`;
+  if(OFF.error) return hd+`<div class="empty">โหลดไม่ได้: ${esc(OFF.error)} <button class="btn small" onclick="OFF=null;loadOfficial();render()">ลองใหม่</button></div>`;
+  const ps=OFF.pages, groups=OFF_CATS.map(g=>[g[0],ps.filter(p=>g[1](p.cat))]);
+  const other=ps.filter(p=>!OFF_CATS.some(g=>g[1](p.cat))); if(other.length) groups.push(['📁 อื่นๆ',other]);
+  const act=ps.filter(p=>p.active).length;
+  return hd+`<div class="kpis share">
+    <div class="kpi"><div class="l">📘 เพจทั้งหมด</div><div class="v">${ps.length}</div><div class="s">${groups.filter(g=>g[1].length).length} หมวด</div></div>
+    <div class="kpi"><div class="l">🟢 ใช้งานอยู่ (Active)</div><div class="v">${act}</div><div class="s">ตามช่องสถานะในไฟล์</div></div>
+    <div class="kpi"><div class="l">⏸️ ยังไม่ได้ใช้งาน</div><div class="v">${ps.length-act}</div></div>
+  </div>`+groups.filter(g=>g[1].length).map(([t,list])=>`<div class="ttgrp"><h2>${t} <span class="count">${list.length}</span></h2><div class="pglist">${list.map(p=>`<div class="pgi ${p.active?'green':'gray'}"><span>${pageLink(p.name,p.fb)}</span><span class="chip ${p.active?'green':'gray'}">${p.active?'Active':'ไม่ได้ใช้งาน'}</span></div>`).join('')}</div></div>`).join('');
 }
 let TT=null, TT_BUSY=false;
 async function loadTiktok(){
@@ -657,7 +688,7 @@ function render(){
   let body='';
   if(PLAT==='perf') body=perfView();
   else if(PLAT==='users') body=usersView();
-  else if(PLAT==='meta') body=SUB==='fbA'?groupA():SUB==='fbB'?groupB(d):soon('FB Page Official','เพจทางการของแบรนด์/บริษัท');
+  else if(PLAT==='meta') body=SUB==='fbA'?groupA():SUB==='fbB'?groupB(d):officialView();
   else if(PLAT==='shopee') body=SUB==='video'?videoView():liveView();
   else if(PLAT==='tiktok') body=SUB==='live'?tiktokLive():tiktokVideo();
   else body=soon('LINE OA','งาน LINE OA / บรอดแคสต์');
