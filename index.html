@@ -210,14 +210,43 @@ let LAST_LOAD=0;
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&DATA&&Date.now()-LAST_LOAD>15000){load();loadMyDay();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='perf')loadPerf();}
 });
-let VIEW_AS=null;
-function resetViews(){SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
+let VIEW_AS=null, FAST=null, FORCE=false;
+const FAST_URL='https://gexapkcuvultnrxiyvgd.supabase.co/functions/v1/pd-data';
+function fastGet(k){if(FORCE||!FAST||!FAST[k])return null;const v=FAST[k];return v&&v.ok===false?{error:v.error}:v}
+function applyFast(j){
+  FAST=j.d; const d=j.d;
+  if(d.logos&&d.logos.logos&&!Object.keys(LOGOS).length){LOGOS=d.logos.logos}
+  SHARE=fastGet('share')||SHARE; VIDEO=fastGet('video')||VIDEO; LIVE=fastGet('live')||LIVE;
+  const md=fastGet('perf_today'); if(md&&!md.error) MYDAY=md;
+  if(d.users&&d.users.ok) USERS=d.users;
+  const pf=fastGet('perf_'+PERF_P); if(pf) PERF=pf;
+  const res=d.data;
+  if(!DATA&&res.pages&&!res.pages.length&&!res.seeAll){SUB='fbA'}
+  DATA=res; render();
+}
+function refreshAll(){
+  FORCE=true; load(true); loadMyDay();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='perf')loadPerf(); if(PLAT==='users')loadUsers();
+  FORCE=false; toast('กำลังดึงข้อมูลสดจากชีต…');
+}
+function resetViews(){FAST=null;USERS=null;SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
 function viewAs(i){const u=USERS.users[i];VIEW_AS={id:u.id,name:u.nick||u.lineName,role:u.role};resetViews();PLAT='meta';SUB='fbB';INNER='home';GA_TAB='pages';window.scrollTo(0,0);load();loadMyDay();toast('กำลังดูในมุมมองของ '+VIEW_AS.name)}
 function exitViewAs(){VIEW_AS=null;resetViews();PLAT='users';window.scrollTo(0,0);load();loadMyDay()}
-async function load(){
+async function load(force){
   LAST_LOAD=Date.now();
   const token=liff.getIDToken();
   if(!token){liff.login({redirectUri:location.href});return}
+  if(!force){
+    const ck='pd_fast_'+(VIEW_AS?VIEW_AS.id:'me');
+    if(!DATA){try{const c=JSON.parse(localStorage.getItem(ck)||'null');if(c&&c.d&&c.d.data)applyFast(c)}catch(e){}}
+    try{
+      const r=await fetch(FAST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_token:token,as:VIEW_AS?VIEW_AS.id:undefined})});
+      const j=await r.json();
+      if(j.ok&&!j.miss){applyFast(j);try{localStorage.setItem(ck,JSON.stringify(j))}catch(e){}return}
+      if(j.error==='LOGIN_EXPIRED'){liff.logout();liff.login({redirectUri:location.href});return}
+    }catch(e){}
+    FAST=null;
+  }
   if(!DATA) screen('⏳','กำลังโหลดข้อมูล…','ดึงสถานะงานล่าสุดจากทุกเพจ');
   let res;
   try{
@@ -247,6 +276,7 @@ async function load(){
 /* ===== แชร์ลิงก์เพจป้ายยา ===== */
 let SHARE=null, SHARE_BUSY=false;
 async function loadShare(){
+  const f=fastGet('share'); if(f){SHARE=f; if(DATA) render(); return}
   if(SHARE_BUSY) return; SHARE_BUSY=true;
   try{const res=await api({action:'share'}); SHARE=res.ok?res:{error:res.error};}
   catch(e){SHARE={error:'เชื่อมต่อไม่ได้'}}
@@ -292,6 +322,7 @@ function shareCard(t){
 /* ===== การ์ดผลงานของฉันวันนี้ (หน้าแรก) ===== */
 let MYDAY=null, MYDAY_HIDE=false;
 async function loadMyDay(){
+  const f=fastGet('perf_today'); if(f&&!f.error){MYDAY=f; if(DATA) render(); return}
   try{const r=await api({action:'perf',period:'today'}); MYDAY=r.ok?r:null;}catch(e){MYDAY=null}
   if(DATA) render();
 }
@@ -337,6 +368,7 @@ function myDayCard(){
 let PERF=null, PERF_P='week', PERF_BUSY=false;
 async function loadPerf(p){
   if(p) PERF_P=p;
+  const f=fastGet('perf_'+PERF_P); if(f){PERF=f; if(DATA) render(); return}
   if(PERF_BUSY) return; PERF_BUSY=true; PERF=null; if(DATA) render();
   try{const res=await api({action:'perf',period:PERF_P}); PERF=res.ok?res:{error:res.error};}
   catch(e){PERF={error:'เชื่อมต่อไม่ได้'}}
@@ -382,6 +414,7 @@ async function api(body){
   return r.json();
 }
 async function loadUsers(){
+  const f=fastGet('users'); if(f&&!f.error&&!USERS){USERS=f; if(PLAT==='users') render();}
   if(USERS_BUSY) return; USERS_BUSY=true;
   try{const res=await api({action:'users'}); USERS=res.ok?res:{error:res.error};}
   catch(e){USERS={error:'เชื่อมต่อไม่ได้'}}
@@ -457,6 +490,7 @@ function go(plat,sub){
   render();scrollTo(0,0);
 }
 async function loadVideo(){
+  const f=fastGet('video'); if(f){VIDEO=f; if(DATA) render(); return}
   if(VIDEO_BUSY) return; VIDEO_BUSY=true;
   try{const res=await api({action:'video'}); VIDEO=res.ok?res:{error:res.error};}catch(e){VIDEO={error:'เชื่อมต่อไม่ได้'}}
   VIDEO_BUSY=false; if(DATA) render();
@@ -517,6 +551,7 @@ function videoView(){
 }
 let LIVE=null, LIVE_BUSY=false;
 async function loadLive(){
+  const f=fastGet('live'); if(f){LIVE=f; if(DATA) render(); return}
   if(LIVE_BUSY) return; LIVE_BUSY=true;
   try{const r=await api({action:'live'}); LIVE=r.ok?r:{error:r.error};}catch(e){LIVE={error:'เชื่อมต่อไม่ได้'}}
   LIVE_BUSY=false; if(DATA) render();
@@ -584,7 +619,7 @@ function render(){
     <div><h1>สวัสดี ${esc(me.nick||me.lineName)} 👋</h1><div class="sub">${esc(me.role)} · อัปเดต ${esc(d.updated)}</div></div>
     <div class="sp"></div>
     <button class="btn ghost live" onclick="openUrl('https://liff.line.me/2012003271-5gshZD8d')">📅 ตารางไลฟ์</button>
-    <button class="btn ghost" onclick="load();loadMyDay();if(PLAT==='meta'&&SUB==='fbA')loadShare();if(PLAT==='shopee'&&SUB==='video')loadVideo();if(PLAT==='shopee'&&SUB==='live')loadLive();if(PLAT==='perf')loadPerf()">↻</button>
+    <button class="btn ghost" onclick="refreshAll()" title="ดึงข้อมูลสดจากชีต">↻</button>
   </div></header>
   <div class="wrap">
     <div class="tabs plat">${plats.map(t=>`<button class="${PLAT===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>
