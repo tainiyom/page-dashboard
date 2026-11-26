@@ -229,7 +229,7 @@ function applyFast(j){
 }
 function refreshAll(){
   FORCE=true; load(true); loadMyDay();
-  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if(PLAT==='meta'&&SUB==='official')loadOfficial(); if(PLAT==='perf')loadPerf(); if(PLAT==='users')loadUsers();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if((PLAT==='meta'&&SUB==='official')||PLAT==='line')loadOfficial(); if(PLAT==='perf')loadPerf(); if(PLAT==='users')loadUsers();
   FORCE=false; toast('กำลังดึงข้อมูลสดจากชีต…');
 }
 function resetViews(){FAST=null;USERS=null;TT=null;OFF=null;SHARE=null;PERF=null;MYDAY=null;MYDAY_HIDE=false;VIDEO=null;LIVE=null;DATA=null;}
@@ -489,7 +489,7 @@ let PLAT='meta', SUB='fbB', INNER='home', VIDEO=null, VIDEO_BUSY=false;
 function go(plat,sub){
   if(plat==='perf'||plat==='users'){PLAT=plat;}else{PLAT=plat;SUB=sub||NAVS[plat].subs[0][0];}
   if(PLAT==='users')loadUsers(); if(PLAT==='perf'&&!PERF)loadPerf();
-  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if(PLAT==='meta'&&SUB==='official')loadOfficial();
+  if(PLAT==='meta'&&SUB==='fbA')loadShare(); if(PLAT==='shopee'&&SUB==='video')loadVideo(); if(PLAT==='shopee'&&SUB==='live')loadLive(); if(PLAT==='tiktok')loadTiktok(); if((PLAT==='meta'&&SUB==='official')||PLAT==='line')loadOfficial();
   render();scrollTo(0,0);
 }
 async function loadVideo(){
@@ -659,6 +659,19 @@ function tiktokVideo(){
   html+=`<h2>📺 ช่อง TikTok แยกตามผู้ดูแล <span class="count">${TT.channels.length}</span></h2>`+owners.map(w=>`<div class="ttgrp"><div class="ttown">👤 ${esc(w)}${w===mine?' <span class="chip green">ของฉัน</span>':''} · ${byOwner[w].length} ช่อง</div><div class="pglist">${byOwner[w].map(c=>`<div class="pgi ${c.sched?(c.sched.today?'green':'red'):'gray'}"><span><b class="pgn">${esc(c.name)}</b><br><small>${[c.basket?(/ไม่มี/.test(c.basket)?'ไม่มีตะกร้า':'🧺 ปักตะกร้า'):'',c.freq?(/\//.test(c.freq)?esc(c.freq):esc(c.freq)+' คลิป/รอบ'):'',c.times.length?'⏰ '+c.times.map(esc).join(', '):''].filter(Boolean).join(' · ')||esc(c.freqNote)}</small></span>${c.sched?`<span class="chip ${c.sched.today?'green':'red'}">${c.sched.today?'ตั้งเวลาแล้ว':'ยังไม่ตั้งเวลา'}</span>`:''}</div>`).join('')}</div></div>`).join('');
   return html;
 }
+function lineView(){
+  const hd=`<div class="ghead"><h2>LINE OA</h2><div class="meta">บัญชี LINE Official ของบริษัท · แก้รายชื่อที่ไฟล์ Naga เพจ facebook / LineOA แท็บ Line OA</div></div>`;
+  if(!OFF) return hd+`<div class="empty">⏳ กำลังโหลดรายชื่อ LINE OA…</div>`;
+  if(OFF.error) return hd+`<div class="empty">โหลดไม่ได้: ${esc(OFF.error)} <button class="btn small" onclick="OFF=null;loadOfficial();render()">ลองใหม่</button></div>`;
+  const L=OFF.line||[], act=L.filter(x=>x.active).length;
+  if(!L.length) return hd+`<div class="empty">ยังไม่มีรายชื่อ LINE OA ในไฟล์</div>`;
+  const grp={}; L.forEach(x=>{(grp[x.cat||'อื่นๆ']=grp[x.cat||'อื่นๆ']||[]).push(x)});
+  return hd+`<div class="kpis share">
+    <div class="kpi"><div class="l">💬 LINE OA ทั้งหมด</div><div class="v">${L.length}</div><div class="s">${Object.keys(grp).length} กลุ่มสินค้า</div></div>
+    <div class="kpi"><div class="l">🟢 ใช้งานอยู่ (Active)</div><div class="v">${act}</div><div class="s">ตามช่องสถานะในไฟล์</div></div>
+    <div class="kpi"><div class="l">⏸️ ยังไม่ได้ใช้งาน</div><div class="v">${L.length-act}</div></div>
+  </div>`+Object.entries(grp).map(([c,list])=>`<div class="ttgrp"><h2>${esc(c)} <span class="count">${list.length}</span></h2><div class="pglist">${list.map(x=>`<div class="pgi ${x.active?'green':'gray'}"><span><b class="pgn">${x.url?`<a href="#" onclick="event.preventDefault();openUrl('${esc(x.url)}')">${esc(x.name)} ↗</a>`:esc(x.name)}</b></span><span class="chip ${x.active?'green':'gray'}">${x.active?'Active':'ไม่ได้ใช้งาน'}</span></div>`).join('')}</div></div>`).join('');
+}
 let LIVE=null, LIVE_BUSY=false;
 async function loadLive(){
   const f=fastGet('live'); if(f){LIVE=f; if(DATA) render(); return}
@@ -717,7 +730,7 @@ function render(){
   else if(PLAT==='meta') body=SUB==='fbA'?groupA():SUB==='fbB'?groupB(d):officialView();
   else if(PLAT==='shopee') body=SUB==='video'?videoView():liveView();
   else if(PLAT==='tiktok') body=SUB==='live'?tiktokLive():tiktokVideo();
-  else body=soon('LINE OA','งาน LINE OA / บรอดแคสต์');
+  else body=lineView();
   const plats=Object.keys(NAVS).map(k=>[k,NAVS[k].icon+' '+NAVS[k].label]);
   plats.push(['perf','📈 ผลงาน']);
   if(isAdmin) plats.push(['users',`👤 ผู้ใช้${d.pendingUsers?` <span class="dot">${d.pendingUsers} รอ</span>`:''}`]);
