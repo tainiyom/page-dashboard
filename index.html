@@ -613,21 +613,47 @@ function tiktokLive(){
   return hd+todayCard+`<h2>📅 7 วันข้างหน้า</h2><div class="tblwrap"><table class="tt"><thead><tr><th>วัน</th><th>คนไลฟ์ TikTok</th><th>ซัพพอร์ต</th><th>สินค้า</th><th>Shopee Live 14.00</th><th>หยุด</th></tr></thead><tbody>${rows||'<tr><td colspan="6">ยังไม่มีตาราง</td></tr>'}</tbody></table></div>
   <div class="meta" style="margin-top:8px">ข้อมูลจากแท็บ "${esc(TT.liveSheet)}" · แก้ตารางที่ไฟล์ NAGA MKT Task List</div>`;
 }
+const ttNm=s=>String(s||'').replace(/^น้อง/,'').replace(/\s/g,'');
+const ttSame=(a,b)=>{a=ttNm(a);b=ttNm(b);return !!a&&!!b&&(a===b||a.indexOf(b)>=0||b.indexOf(a)>=0)};
+const ttStc=s=>/ลงคลิปแล้ว|ลงแล้ว|ผ่าน(?!ไม่)|เสร็จ/.test(s)&&!/ไม่ผ่าน/.test(s)?'green':/ไม่ผ่าน|แก้|ตีกลับ|ปัญหา/.test(s)?'red':/ยังไม่เริ่ม|^$/.test(s)?'gray':'yellow';
 function tiktokVideo(){
-  const hd=ttHead('TikTok Video','ช่อง TikTok Affiliate · งานประจำวันแผนก TikTok');
+  const hd=ttHead('TikTok Video','ช่อง TikTok Affiliate · งานโพสต์คลิปรายวัน · งานวิดีโอน้องฝึกงาน');
   if(!TT) return hd+`<div class="empty">⏳ กำลังโหลดงาน TikTok…</div>`;
   if(TT.error) return hd+`<div class="empty">โหลดไม่ได้: ${esc(TT.error)} <button class="btn small" onclick="TT=null;loadTiktok();render()">ลองใหม่</button></div>`;
-  const it=TT.todo.items, all=it.reduce((a,x)=>a+(x.subs.length||1),0), done=it.reduce((a,x)=>a+(x.subs.length?x.subs.filter(s=>s.done).length:(x.done?1:0)),0);
-  const sc=TT.sched, scOk=sc.filter(x=>x.today).length, minUntil=sc.length?sc.map(x=>x.until).sort()[0]:'';
-  const o=TT.office, mine=DATA.me.nick;
-  const pct=all?Math.round(done/all*100):0;
-  let html=hd+`<div class="kpis share">
-    <div class="kpi"><div class="l">✅ งานวันนี้ (ไตเติ้ล)</div><div class="v">${done}/${all}</div><div class="s">${TT.todo.isToday?'อัปเดตจาก To do list':'วันนี้ยังไม่ได้ลง To do list'}</div><div class="bar"><i style="width:${pct}%"></i></div></div>
-    <div class="kpi ${scOk<sc.length?'alert':''}"><div class="l">⏰ ตั้งเวลาโพสต์วันนี้</div><div class="v">${scOk}/${sc.length}</div><div class="s">ตั้งล่วงหน้าถึง ${dmy(minUntil)}</div></div>
-    <div class="kpi"><div class="l">📺 ช่องทั้งหมด</div><div class="v">${TT.channels.length}</div><div class="s">ผู้ดูแล ${[...new Set(TT.channels.map(c=>c.owner).filter(Boolean))].length} คน</div></div>
-    <div class="kpi"><div class="l">🏢 ช่อง NAGA OFFICE</div><div class="v" style="font-size:20px">${o.next?dmy(o.next):'—'}</div><div class="s">คลิปถัดไป (ทุกพุธ)${o.last&&o.last.views?' · ล่าสุด '+esc(o.last.views)+' วิว':''}</div></div>
-  </div>`;
-  if(it.length) html+=`<h2>📝 งานวันนี้</h2><div class="pglist">${it.map(x=>{const ok=x.subs.length?x.subs.every(s=>s.done):x.done;return `<div class="pgi ${ok?'green':'yellow'}" style="display:block"><b>${ok?'✅':'⏳'} ${esc(x.t)}</b>${x.subs.length?`<div class="meta">${x.subs.map(s=>`${s.done?'✅':'⏳'} ${esc(s.t)}`).join(' · ')}</div>`:`<span class="chip ${ok?'green':'yellow'}" style="margin-left:6px">${esc(x.st)}</span>`}</div>`}).join('')}</div>`;
+  const me=DATA.me, mine=me.nick, trainee=me.role==='Trainee';
+  const P=(TT.posts&&TT.posts.rows)||[], V=TT.videos||[];
+  const myP=trainee?P.filter(x=>ttSame(x.owner,mine)):P;
+  const vToday=V.filter(x=>x.d===TT.today), myV=trainee?vToday.filter(x=>ttSame(x.owner,mine)):vToday;
+  const pDone=myP.filter(x=>ttStc(x.st)==='green').length;
+  const vPass=myV.filter(x=>ttStc(x.st)==='green').length, vSent=myV.filter(x=>x.link||x.product).length, vWait=myV.filter(x=>ttStc(x.st)==='gray').length, vBad=myV.filter(x=>ttStc(x.st)==='red').length;
+  const pdate=TT.posts&&TT.posts.date;
+  let html=hd+(trainee?`<div class="meta" style="margin-bottom:8px">👤 แสดงเฉพาะงานของ <b>${esc(mine)}</b></div>`:'')+`<div class="kpis share">
+    <div class="kpi ${myP.length&&pDone<myP.length?'alert':''}"><div class="l">📤 โพสต์คลิป${TT.posts&&TT.posts.isToday?'วันนี้':' ('+dmy(pdate)+')'}</div><div class="v">${pDone}/${myP.length}</div><div class="s">ลงคลิปแล้ว / ทั้งหมด</div><div class="bar"><i style="width:${myP.length?Math.round(pDone/myP.length*100):0}%"></i></div></div>
+    <div class="kpi"><div class="l">🎬 วิดีโอที่ส่งวันนี้</div><div class="v">${vSent}</div><div class="s">ผ่านแล้ว ${vPass}${vBad?' · ต้องแก้ '+vBad:''}</div></div>
+    <div class="kpi ${vWait?'alert':''}"><div class="l">⏳ ยังไม่เริ่ม</div><div class="v">${vWait}</div><div class="s">รายการวิดีโอวันนี้</div></div>`;
+  if(!trainee){
+    const sc=TT.sched, scOk=sc.filter(x=>x.today).length, minUntil=sc.length?sc.map(x=>x.until).sort()[0]:'', o=TT.office;
+    html+=`<div class="kpi ${scOk<sc.length?'alert':''}"><div class="l">⏰ ตั้งเวลาโพสต์วันนี้</div><div class="v">${scOk}/${sc.length}</div><div class="s">ตั้งล่วงหน้าถึง ${dmy(minUntil)}</div></div>
+    <div class="kpi"><div class="l">🏢 ช่อง NAGA OFFICE</div><div class="v" style="font-size:20px">${o.next?dmy(o.next):'—'}</div><div class="s">คลิปถัดไป (ทุกพุธ)${o.last&&o.last.views?' · ล่าสุด '+esc(o.last.views)+' วิว':''}</div></div>`;
+  }
+  html+=`</div>`;
+  // งานโพสต์คลิปรายวัน
+  if(myP.length){
+    html+=`<h2>📤 งานโพสต์คลิป${TT.posts.isToday?'วันนี้':' '+dmy(pdate)} <span class="count">${myP.length}</span></h2><div class="tblwrap"><table class="tt"><thead><tr><th>เวลา</th><th>ช่อง</th><th>ตะกร้า</th><th>จำนวน</th><th>สถานะ</th><th>ผู้รับผิดชอบ</th></tr></thead><tbody>${myP.map(x=>`<tr><td>${esc(x.time||'—')}</td><td><b>${esc(x.ch)}</b></td><td>${/ไม่มี/.test(x.type)?'—':x.type?'🧺':''}</td><td>${esc(x.n)}</td><td><span class="chip ${ttStc(x.st)}">${esc(x.st||'—')}</span></td><td>${esc(x.owner)}${ttSame(x.owner,mine)?' <span class="chip green">ฉัน</span>':''}</td></tr>`).join('')}</tbody></table></div>`;
+  } else html+=`<h2>📤 งานโพสต์คลิป</h2><div class="empty">${trainee?'วันนี้ยังไม่มีงานโพสต์ที่ลงชื่อคุณ':'ยังไม่มีงานโพสต์ในชีท'}</div>`;
+  // งานวิดีโอน้องฝึกงาน (วันนี้) แยกตามผู้ดูแล
+  const byO={}; myV.forEach(x=>{(byO[x.owner||'—']=byO[x.owner||'—']||[]).push(x)});
+  const os=Object.keys(byO).sort((a,b)=>ttSame(b,mine)-ttSame(a,mine)||a.localeCompare(b,'th'));
+  html+=`<h2>🎬 งานวิดีโอ${trainee?'ของฉัน':'น้องฝึกงาน'}วันนี้ <span class="count">${myV.length}</span></h2>`+(os.length?os.map(w=>{const L=byO[w],ok=L.filter(x=>ttStc(x.st)==='green').length;
+    return `<div class="ttgrp"><div class="ttown">👤 ${esc(w)}${ttSame(w,mine)?' <span class="chip green">ของฉัน</span>':''} · ผ่าน ${ok}/${L.length}${L[0].checker?' · ตรวจโดย '+esc(L[0].checker):''}</div><div class="pglist">${L.map(x=>`<div class="pgi ${ttStc(x.st)}"><span><b class="pgn">${esc(x.product||'(ยังไม่ระบุสินค้า)')}</b><br><small>${esc(x.ch)}${x.link?` · <a href="#" onclick="event.preventDefault();openUrl('${esc(x.link)}')">▶️ ดูคลิป</a>`:''}</small></span><span class="chip ${ttStc(x.st)}">${esc(x.st||'—')}</span></div>`).join('')}</div></div>`}).join(''):`<div class="empty">วันนี้ยังไม่มีรายการวิดีโอ${trainee?'ที่ลงชื่อคุณ':''}</div>`);
+  // สรุป 7 วัน (จำนวนวิดีโอที่ผ่าน ต่อคน)
+  const days=[];for(let i=6;i>=0;i--){const t=new Date(TT.today+'T00:00:00');t.setDate(t.getDate()-i);days.push(t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2))}
+  const V7=trainee?V.filter(x=>ttSame(x.owner,mine)):V, ppl=[...new Set(V7.map(x=>x.owner).filter(Boolean))];
+  if(ppl.length) html+=`<h2>📊 วิดีโอที่ผ่าน 7 วันล่าสุด</h2><div class="tblwrap"><table class="tt"><thead><tr><th>ผู้ดูแล</th>${days.map(d=>`<th>${dmy(d)}</th>`).join('')}<th>รวม</th></tr></thead><tbody>${ppl.map(p=>{let tot=0;return `<tr><td><b>${esc(p)}</b></td>${days.map(d=>{const L=V7.filter(x=>x.owner===p&&x.d===d),ok=L.filter(x=>ttStc(x.st)==='green').length;tot+=ok;return `<td>${L.length?ok+'/'+L.length:'—'}</td>`}).join('')}<td><b>${tot}</b></td></tr>`}).join('')}</tbody></table></div>`;
+  if(trainee) return html;
+  // งานประจำวันไตเติ้ล + ช่องแยกผู้ดูแล (เหมือนเดิม)
+  const it=TT.todo.items;
+  if(it.length) html+=`<h2>📝 งานวันนี้ (To do list)</h2><div class="pglist">${it.map(x=>{const ok=x.subs.length?x.subs.every(s=>s.done):x.done;return `<div class="pgi ${ok?'green':'yellow'}" style="display:block"><b>${ok?'✅':'⏳'} ${esc(x.t)}</b>${x.subs.length?`<div class="meta">${x.subs.map(s=>`${s.done?'✅':'⏳'} ${esc(s.t)}`).join(' · ')}</div>`:`<span class="chip ${ok?'green':'yellow'}" style="margin-left:6px">${esc(x.st)}</span>`}</div>`}).join('')}</div>`;
   const byOwner={}; TT.channels.forEach(c=>{(byOwner[c.owner||'—']=byOwner[c.owner||'—']||[]).push(c)});
   const owners=Object.keys(byOwner).sort((a,b)=>(b===mine)-(a===mine)||a.localeCompare(b,'th'));
   html+=`<h2>📺 ช่อง TikTok แยกตามผู้ดูแล <span class="count">${TT.channels.length}</span></h2>`+owners.map(w=>`<div class="ttgrp"><div class="ttown">👤 ${esc(w)}${w===mine?' <span class="chip green">ของฉัน</span>':''} · ${byOwner[w].length} ช่อง</div><div class="pglist">${byOwner[w].map(c=>`<div class="pgi ${c.sched?(c.sched.today?'green':'red'):'gray'}"><span><b class="pgn">${esc(c.name)}</b><br><small>${[c.basket?(/ไม่มี/.test(c.basket)?'ไม่มีตะกร้า':'🧺 ปักตะกร้า'):'',c.freq?(/\//.test(c.freq)?esc(c.freq):esc(c.freq)+' คลิป/รอบ'):'',c.times.length?'⏰ '+c.times.map(esc).join(', '):''].filter(Boolean).join(' · ')||esc(c.freqNote)}</small></span>${c.sched?`<span class="chip ${c.sched.today?'green':'red'}">${c.sched.today?'ตั้งเวลาแล้ว':'ยังไม่ตั้งเวลา'}</span>`:''}</div>`).join('')}</div></div>`).join('');
