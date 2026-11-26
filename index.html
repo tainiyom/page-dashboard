@@ -119,7 +119,7 @@ a.pgn .fb{font-size:.8em;color:#1877F2}
 .warnbox{background:#FFF4E5;border:1px solid #f5c38a;color:#8a4b00;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
 .how{margin-top:8px}.how summary{cursor:pointer;color:var(--mute);font-size:13.5px}
 .chip.gray{background:#eef1f6;color:var(--mute)}
-.tabs.plat{margin-top:14px}.tabs.plat button{font-size:15px;padding:8px 16px}
+.tabs.plat{margin-top:14px}.plogo{width:22px;height:22px;vertical-align:-5px;background:#fff;border-radius:7px;padding:2px;box-sizing:border-box;margin-right:2px}.tabs.plat button{font-size:15px;padding:8px 16px}
 .tabs.subt{margin-top:8px;padding:6px;background:#e9edf5;border-radius:24px;display:inline-flex;max-width:100%}
 .tabs.subt button{border:none;background:transparent;font-size:13.5px;padding:6px 12px}
 .tabs.subt button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -480,10 +480,10 @@ async function saveUser(i,status){
 
 /* ===== โครงเมนู: แพลตฟอร์ม → กลุ่ม → เพจ/ช่อง ===== */
 const NAVS={
-  meta:{label:'Meta',icon:'📘',subs:[['official','FB Page Official'],['fbA','FB Affiliate Group A'],['fbB','FB Affiliate Group B']]},
-  shopee:{label:'Shopee',icon:'🛍️',subs:[['live','Live'],['video','Video']]},
-  tiktok:{label:'TikTok',icon:'🎵',subs:[['live','Live'],['video','Video']]},
-  line:{label:'LINE',icon:'💬',subs:[['oa','LINE OA']]}
+  meta:{label:'Meta',icon:`<img class="plogo" src="https://cdn.simpleicons.org/meta/0866FF" alt="" onerror="this.outerHTML='📘'">`,subs:[['official','FB Page Official'],['fbA','FB Affiliate Group A'],['fbB','FB Affiliate Group B']]},
+  shopee:{label:'Shopee',icon:`<img class="plogo" src="https://cdn.simpleicons.org/shopee/EE4D2D" alt="" onerror="this.outerHTML='🛍️'">`,subs:[['live','Live'],['video','Video']]},
+  tiktok:{label:'TikTok',icon:`<img class="plogo" src="https://cdn.simpleicons.org/tiktok/000000" alt="" onerror="this.outerHTML='🎵'">`,subs:[['live','Live'],['video','Video']]},
+  line:{label:'LINE',icon:`<img class="plogo" src="https://cdn.simpleicons.org/line/00C300" alt="" onerror="this.outerHTML='💬'">`,subs:[['oa','LINE OA']]}
 };
 let PLAT='meta', SUB='fbB', INNER='home', VIDEO=null, VIDEO_BUSY=false;
 function go(plat,sub){
