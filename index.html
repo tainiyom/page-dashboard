@@ -153,6 +153,22 @@ a.pgn{text-decoration:none}a.pgn:hover{text-decoration:underline;text-decoration
 .tblwrap{overflow-x:auto;background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:14px}
 table.tt{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}table.tt th,table.tt td{padding:8px 10px;border-bottom:1px solid #eef0f4;text-align:left;vertical-align:top}table.tt th{background:#f6f7fb;font-weight:700}table.tt tr.tod td{background:#fff8e1}
 .ttgrp{margin-bottom:12px}.ttown{font-weight:700;margin:8px 0 6px}
+.lngrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:10px}
+.lnc{position:relative;background:#fffdf9;border:1px solid #e4ded3;border-radius:14px;overflow:hidden}
+.lnbar{display:block;height:4px}
+.lnh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e4ded3}
+.lnh b{font-size:16px}.lnt{margin-left:auto;font-size:12px;color:#6f6a62}
+.lnb{font-size:11px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:6px}
+.lnb.air{background:#e0322b;color:#fff;animation:lnp 1.6s ease-in-out infinite}.lnb.off{background:#f1ede6;color:#6f6a62}.lnb.stale{background:#fdf0d8;color:#b76e00}
+@keyframes lnp{50%{opacity:.55}}
+.lnbd{padding:10px 12px 12px}.lnw{font-size:12px;color:#6f6a62;margin-bottom:6px}.lnw b{color:#1d1b19}
+.shp{background:linear-gradient(180deg,#e0533a,#ef8148);color:#fff;border-radius:12px;padding:12px 10px;text-align:center}
+.shp .cap{font-size:12px;opacity:.9}.shp .gmv{font-size:30px;font-weight:700;line-height:1.15;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.shp .t3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.shp .t3 div{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 4px}
+.shp .t3 span,.shp .g span{display:block;font-size:10.5px;opacity:.92}.shp .t3 b{display:block;font-size:19px}.shp .t3 small{display:block;font-size:9.5px;opacity:.75}
+.shp .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 4px;margin-top:10px}.shp .g b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.shp .foot{font-size:10.5px;opacity:.85;margin-top:8px}
+.vio{font-size:12.5px;font-weight:600;border-radius:8px;padding:6px 10px;margin-top:8px}.vio.ok{background:#e1f3e8;color:#1f8a4c}.vio.wn{background:#fdf0d8;color:#b76e00}.vio.bad{background:#fde7e5;color:#e0322b}
 </style>
 </head>
 <body>
@@ -716,7 +732,39 @@ function liveView(){
     </div>`;}).join('');
   const ses=d.sessions.length?`<h2>🎥 ไลฟ์ล่าสุด <span class="count">${d.sessions.length}</span></h2>
     <div class="pglist">${d.sessions.map(x=>`<div class="pgi ${x.status==='live'?'red':''}"><span><b>${esc(x.channel)}</b> · ${esc(x.start)}<br><small>${x.hours.toFixed(1)} ชม. · ${x.orders} ออเดอร์${x.sales!=null?' · ยอด '+baht(x.sales):''}</small></span><span class="chip ${x.status==='live'?'red':'gray'}">${x.status==='live'?'🔴 กำลังไลฟ์':'จบแล้ว'}</span></div>`).join('')}</div>`:'';
-  return head+money+`<h2>📋 รายชื่อช่อง <span class="count">${ch.length}</span></h2><div class="pages">${cards}</div>`+ses;
+  return head+liveNowView(d)+money+`<h2>📋 รายชื่อช่อง <span class="count">${ch.length}</span></h2><div class="pages">${cards}</div>`+ses;
+}
+function liveNowView(d){
+  const rows=(d.now||[]).filter(x=>x&&x.channel); if(!rows.length) return '';
+  const N=v=>{const x=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(x)?x:0};
+  const F=(v,dg=0)=>N(v).toLocaleString('th-TH',{maximumFractionDigits:dg});
+  const T=s=>{const m=String(s||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/);return m?Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4].padStart(2,'0')}:${m[5]}:00+07:00`):0};
+  const dmhm=s=>{const m=String(s||'').match(/\d{4}-(\d{2})-(\d{2})[ T](\d{1,2}:\d{2})/);return m?`${+m[2]}/${+m[1]} ${m[3]}`:''};
+  const COL={KCM:'#e8762b',NAGACARE:'#2f9a5b',Tinncare:'#2f6fd1',Warawut:'#8b5cf6'};
+  const ORD=['KCM','NAGACARE','Tinncare','Warawut'];
+  rows.sort((a,b)=>ORD.indexOf(a.channel)-ORD.indexOf(b.channel));
+  const OA=(d.onair&&d.onair.ch)||{};
+  const cards=rows.map(x=>{
+    const age=(Date.now()-T(x.updated_at))/3600e3, live=String(x.status)==='live';
+    const st=live&&age<3?['air','● ON AIR']:live?['stale','ข้อมูลค้าง']:['off','ปิดไลฟ์'];
+    const o=OA[x.channel], who=o&&o.now&&o.now.length?o.now.map(p=>`${esc(p.nick)} <small>(${esc(p.shift)})</small>`).join(', '):'';
+    const av=N(x.avg_view_sec), tm=[Math.floor(av/3600),Math.floor(av%3600/60),Math.floor(av%60)].map(v=>String(v).padStart(2,'0')).join(':');
+    const has=k=>x[k]!==undefined;
+    const g=[['การเข้าชม',F(x.views)],['เวลาดูเฉลี่ย',tm],['คอมเมนต์',F(x.comments)],
+      has('gpm')?['GPM (฿)',F(x.gpm,2)]:null,['คำสั่งซื้อ',F(x.orders)],has('abs')?['ยอดเฉลี่ย/ออเดอร์',F(x.abs)]:null,
+      ['ผู้ชม (CCU)',F(x.ccu)],['PCU',F(x.pcu)],['อัตราคลิกสินค้า',F(N(x.ctr)*100,1)+'%'],
+      ['อัตราการสั่งซื้อ',F(N(x.co)*100,1)+'%'],['ผู้ซื้อ',F(x.buyers)],['จำนวนที่ขายได้',F(x.items_sold)]].filter(Boolean);
+    const vc=N(x.viol_count),vw=N(x.viol_warned),vt=N(x.viol_terminated);
+    const vio=vt?['bad','⛔ ไลฟ์ถูกระงับ · '+esc(x.viol_text||'ดูรายละเอียดใน Creator Center')]:(vc||vw)?['wn',`⚠️ ถูกเตือน ${vc} รายการ · `+esc(x.viol_text||'ดูรายละเอียดใน Creator Center')]:['ok','✅ ไลฟ์นี้ไม่มีการละเมิด'];
+    return `<div class="lnc"><i class="lnbar" style="background:${COL[x.channel]||'#999'}"></i>
+      <div class="lnh"><b>${esc(x.channel)}</b><span class="lnb ${st[0]}">${st[1]}</span><span class="lnt">เริ่ม ${esc(dmhm(x.start))}</span></div>
+      <div class="lnbd">${who?`<div class="lnw">คนไลฟ์กะนี้: <b>${who}</b></div>`:''}
+      <div class="shp">${has('gmv')?`<div class="cap">ยอดขาย (฿) · คำสั่งซื้อทั้งหมด</div><div class="gmv">${F(x.gmv,2)}</div>`:`<div class="cap">คำสั่งซื้อทั้งหมด</div><div class="gmv">${F(x.orders)}</div>`}
+        <div class="t3">${[['CCU ที่มีส่วนร่วม',x.engaged_ccu,'เข้าชม > 1 นาที'],['คอมเมนต์',x.comments_1m,'1 นาทีที่ผ่านมา'],['เพิ่มในรถเข็น',x.atc_1m,'1 นาทีที่ผ่านมา']].map(([l,v,s])=>`<div><span>${l}</span><b>${F(v)}</b><small>${s}</small></div>`).join('')}</div>
+        <div class="g">${g.map(([l,v])=>`<div><span>${l}</span><b>${v}</b></div>`).join('')}</div>
+        <div class="foot">❤ ${F(x.likes)} · แชร์ ${F(x.shares)} · ผู้ติดตามใหม่ ${F(x.new_followers)} · อัปเดต ${esc(String(x.updated_at||'').slice(11,16))} น.</div></div>
+      <div class="vio ${vio[0]}">${vio[1]}</div></div></div>`;}).join('');
+  return `<h2>🔴 ไลฟ์สดตอนนี้ <span class="count">${rows.length}</span></h2><div class="lngrid">${cards}</div><div class="meta" style="margin:-4px 0 14px">ข้อมูลเดียวกับหน้าห้องไลฟ์ของพราว · อัปเดตทุกรอบที่พราวดึง (ประมาณทุก 2 ชม.)</div>`;
 }
 function todayDM(){const x=new Date();return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')}
 function soon(title,desc){return `<div class="ghead"><h2>${title}</h2></div><div class="empty">🚧 ${desc}<br><small>ยังไม่ได้เชื่อมข้อมูล · บอกได้ว่าจะให้ดึงจากไฟล์ไหน</small></div>`}
