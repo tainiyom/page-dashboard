@@ -526,12 +526,32 @@ function reelKpis(d){
     </div>`;
 }
 function groupB(d){
-  const inner=[['home',`📋 รายเพจ (${d.pages.length})`],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`]];
-  const body=INNER==='tasks'?tasksView(d):INNER==='probs'?probsView(d):homeView(d);
+  const inner=[['home',`📋 รายเพจ (${d.pages.length})`],['tasks',`🎬 งานวันนี้ (${d.tasks.length})`],['probs',`⚠️ ปัญหา (${d.problems.length})`],['visit',`🎯 Visitor/คลิป${d.visit&&!d.visit.error?` (${d.visit.pass})`:''}`]];
+  const body=INNER==='tasks'?tasksView(d):INNER==='probs'?probsView(d):INNER==='visit'?visitView(d):homeView(d);
   return `<div class="ghead"><h2>FB Affiliate Group B <span class="count">${d.pages.length} เพจ</span></h2><div class="meta">เพจคลิป Reel · ลงวันละ 3 คลิป/เพจ พร้อมปักตะกร้า</div></div>
     ${reelKpis(d)}
     <div class="tabs sm">${inner.map(t=>`<button class="${INNER===t[0]?'on':''}" onclick="INNER='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
     ${body}`;
+}
+function visitView(d){
+  const v=d.visit;
+  if(!v) return `<div class="empty">ยังไม่มีข้อมูลคลิก · ระบบดึงจากรายงานคลิก Shopee Affiliate ทุกวัน</div>`;
+  if(v.error) return `<div class="empty">อ่านข้อมูลคลิกไม่ได้: ${esc(v.error)}</div>`;
+  const dm=s=>s?`${+s.slice(8)}/${+s.slice(5,7)}`:'–';
+  const t=v.tier, pct=t.next?Math.round(v.pass/t.next*100):100;
+  const money=t.nextBaht!=null?` · โบนัสขั้นถัดไป ฿${Number(t.nextBaht).toLocaleString('th-TH')}${t.curBaht?` (ตอนนี้ ฿${Number(t.curBaht).toLocaleString('th-TH')})`:''}`:'';
+  const kp=`<div class="kpis">
+    <div class="kpi"><div class="l">✅ คลิปผ่าน 50 visitor</div><div class="v">${v.pass}</div><div class="s">จาก ${v.posted} คลิปที่ลงเดือนนี้</div></div>
+    <div class="kpi"><div class="l">🎯 ขั้นถัดไป</div><div class="v">${t.next||'ครบแล้ว'}</div><div class="s">${t.next?`อีก ${t.need} คลิป${money}`:'ถึงขั้นสูงสุด'}</div><div class="bar"><i style="width:${Math.min(100,pct)}%"></i></div></div>
+    <div class="kpi"><div class="l">🔥 ใกล้ถึง (20–49)</div><div class="v">${v.near}</div><div class="s">ดันอีกนิดก็ผ่าน</div></div>
+    <div class="kpi"><div class="l">📅 ข้อมูลคลิกถึง</div><div class="v" style="font-size:20px">${dm(v.lastDay)}</div><div class="s">อัปเดต ${esc(String(v.updated||'').slice(5,16))}</div></div></div>`;
+  const rule=`<div class="note" style="margin:8px 0 14px;padding:10px 12px;border-radius:10px;background:#fdf0d8;color:#7a4b00;font-size:13px">⚠️ <b>กติกา:</b> visitor ต้องมาจากคนดูจริงเท่านั้น <b>ห้ามเอาลิงก์ไปแลกคลิกในกลุ่ม/แชท/เว็บแลกคลิก</b> และห้ามกดลิงก์ตัวเอง · Shopee ตรวจย้อนหลังได้ ถ้าโดนจะถูกตัดโบนัสหรือระงับบัญชีทั้งช่อง<br><small>ตัวเลขนับจากคลิกลิงก์ติด Sub ID ในรายงานคลิก (ประมาณการ) · ยอดที่ Shopee นับจริงดูในหน้า Mission</small></div>`;
+  const rows=v.pages.map(p=>{const tone=p.pass?'green':p.near?'yellow':p.posted?'red':'gray';
+    return `<div class="pgi ${tone}"><span><b>${esc(p.name)}</b><br><small>ลงแล้ว ${p.posted} · คลิกรวม ${p.clicks.toLocaleString('th-TH')}${p.nosub?` · ไม่มี Sub ID ${p.nosub}`:''}</small></span><span class="chip ${tone}">ผ่าน ${p.pass} · ใกล้ ${p.near} · ต่ำ ${p.low}</span></div>`}).join('');
+  const li=(arr,empty)=>arr.length?`<div class="pglist">${arr.map(c=>`<div class="pgi ${c.clicks>=50?'green':c.clicks>=20?'yellow':'gray'}"><span><b>${esc(c.page)}</b> · ${esc(c.title)}<br><small>ลง ${dm(c.posted)}${c.last?` · คลิกล่าสุด ${dm(c.last)}`:''}${c.post?` · <a href="#" onclick="event.preventDefault();openUrl('${esc(c.post)}')">เปิดโพสต์</a>`:''}</small></span><span class="chip ${c.clicks>=50?'green':c.clicks>=20?'yellow':'gray'}">${c.clicks} คลิก</span></div>`).join('')}</div>`:`<div class="empty">${empty}</div>`;
+  return kp+rule+`<h2>📋 รายเพจ เดือนนี้</h2><div class="pglist">${rows||'<div class="empty">ยังไม่มีคลิปที่ลงเดือนนี้</div>'}</div>
+    <h2>🔥 ใกล้ถึง 50 (ควรดัน)</h2>${li(v.nearList,'ยังไม่มีคลิปที่ได้ 20–49 คลิก')}
+    <h2>🏆 คลิปที่คนกดมากสุด</h2>${li(v.top,'ยังไม่มีคลิก')}`;
 }
 let GA_TAB='pages';
 function groupA(){
